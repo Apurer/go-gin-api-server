@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	partnerclient "github.com/GIT_USER_ID/GIT_REPO_ID/internal/clients/http/partner"
+	partnerclient "github.com/GIT_USER_ID/GIT_REPO_ID/internal/infra/clients/http/partner"
 	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application/types"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/domain"
 )
