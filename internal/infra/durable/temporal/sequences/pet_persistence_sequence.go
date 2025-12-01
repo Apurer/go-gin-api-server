@@ -6,7 +6,7 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
-	petactivities "github.com/GIT_USER_ID/GIT_REPO_ID/internal/durable/temporal/activities/pets"
+	petactivities "github.com/GIT_USER_ID/GIT_REPO_ID/internal/infra/durable/temporal/activities/pets"
 	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application/types"
 )
 

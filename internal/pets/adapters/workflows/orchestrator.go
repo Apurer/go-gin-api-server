@@ -9,7 +9,7 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.temporal.io/sdk/client"
 
-	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/durable/temporal/workflows/pets"
+	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/infra/durable/temporal/workflows/pets"
 	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application"
 	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application/types"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/ports"

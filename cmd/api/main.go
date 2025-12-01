@@ -21,8 +21,8 @@ import (
 	petsworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/adapters/workflows"
 	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application"
 	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/ports"
-	platformobservability "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/observability"
-	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/postgres"
+	platformobservability "github.com/GIT_USER_ID/GIT_REPO_ID/internal/infra/platform/observability"
+	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/infra/platform/postgres"
 
 	storememory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/adapters/memory"
 	storeapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/application"
