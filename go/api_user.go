@@ -7,23 +7,23 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	userhttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/adapters/http/mapper"
-	userapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/application"
+	userhttp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/http"
 	userports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/ports"
+	userservice "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/service"
 )
 
 // UserAPI implements the user OpenAPI section.
 type UserAPI struct {
-	service *userapp.Service
+	service *userservice.Service
 }
 
 // NewUserAPI wires dependencies.
-func NewUserAPI(service *userapp.Service) UserAPI {
+func NewUserAPI(service *userservice.Service) UserAPI {
 	return UserAPI{service: service}
 }
 
-func toTransportUser(model User) userhttpmapper.User {
-	return userhttpmapper.User{
+func toTransportUser(model User) userhttp.User {
+	return userhttp.User{
 		ID:        model.Id,
 		Username:  model.Username,
 		FirstName: model.FirstName,
@@ -35,15 +35,15 @@ func toTransportUser(model User) userhttpmapper.User {
 	}
 }
 
-func toTransportUserList(list []User) []userhttpmapper.User {
-	result := make([]userhttpmapper.User, 0, len(list))
+func toTransportUserList(list []User) []userhttp.User {
+	result := make([]userhttp.User, 0, len(list))
 	for _, item := range list {
 		result = append(result, toTransportUser(item))
 	}
 	return result
 }
 
-func fromTransportUser(user userhttpmapper.User) User {
+func fromTransportUser(user userhttp.User) User {
 	return User{
 		Id:         user.ID,
 		Username:   user.Username,
@@ -56,7 +56,7 @@ func fromTransportUser(user userhttpmapper.User) User {
 	}
 }
 
-func fromTransportUsers(users []userhttpmapper.User) []User {
+func fromTransportUsers(users []userhttp.User) []User {
 	result := make([]User, 0, len(users))
 	for _, user := range users {
 		result = append(result, fromTransportUser(user))
@@ -72,13 +72,13 @@ func (api *UserAPI) CreateUser(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	user := userhttpmapper.ToDomainUser(toTransportUser(payload))
+	user := userhttp.ToDomainUser(toTransportUser(payload))
 	saved, err := api.service.CreateUser(c.Request.Context(), user)
 	if err != nil {
 		respondUserError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, fromTransportUser(userhttpmapper.FromDomainUser(saved)))
+	c.JSON(http.StatusOK, fromTransportUser(userhttp.FromDomainUser(saved)))
 }
 
 // Post /v2/user/createWithArray
@@ -89,13 +89,13 @@ func (api *UserAPI) CreateUsersWithArrayInput(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	users := userhttpmapper.ToDomainUsers(toTransportUserList(payload))
+	users := userhttp.ToDomainUsers(toTransportUserList(payload))
 	created, err := api.service.CreateUsers(c.Request.Context(), users)
 	if err != nil {
 		respondUserError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, fromTransportUsers(userhttpmapper.FromDomainUsers(created)))
+	c.JSON(http.StatusOK, fromTransportUsers(userhttp.FromDomainUsers(created)))
 }
 
 // Post /v2/user/createWithList
@@ -106,13 +106,13 @@ func (api *UserAPI) CreateUsersWithListInput(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	users := userhttpmapper.ToDomainUsers(toTransportUserList(payload))
+	users := userhttp.ToDomainUsers(toTransportUserList(payload))
 	created, err := api.service.CreateUsers(c.Request.Context(), users)
 	if err != nil {
 		respondUserError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, fromTransportUsers(userhttpmapper.FromDomainUsers(created)))
+	c.JSON(http.StatusOK, fromTransportUsers(userhttp.FromDomainUsers(created)))
 }
 
 // Delete /v2/user/:username
@@ -139,7 +139,7 @@ func (api *UserAPI) GetUserByName(c *gin.Context) {
 		respondUserError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, fromTransportUser(userhttpmapper.FromDomainUser(user)))
+	c.JSON(http.StatusOK, fromTransportUser(userhttp.FromDomainUser(user)))
 }
 
 // Get /v2/user/login
@@ -175,13 +175,13 @@ func (api *UserAPI) UpdateUser(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	user := userhttpmapper.ToDomainUser(toTransportUser(payload))
+	user := userhttp.ToDomainUser(toTransportUser(payload))
 	updated, err := api.service.Update(c.Request.Context(), username, user)
 	if err != nil {
 		respondUserError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, fromTransportUser(userhttpmapper.FromDomainUser(updated)))
+	c.JSON(http.StatusOK, fromTransportUser(userhttp.FromDomainUser(updated)))
 }
 
 func respondUserError(c *gin.Context, err error) {

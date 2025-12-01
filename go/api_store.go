@@ -14,23 +14,23 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	storehttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/adapters/http/mapper"
-	storeapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/application"
-	storeports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/ports"
+	storehttp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/http"
+	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/ports"
+	storeservice "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/service"
 )
 
 // StoreAPI implements the store/order OpenAPI operations.
 type StoreAPI struct {
-	service *storeapp.Service
+	service *storeservice.Service
 }
 
 // NewStoreAPI wires the application service.
-func NewStoreAPI(service *storeapp.Service) StoreAPI {
+func NewStoreAPI(service *storeservice.Service) StoreAPI {
 	return StoreAPI{service: service}
 }
 
-func toTransportOrder(model Order) storehttpmapper.Order {
-	return storehttpmapper.Order{
+func toTransportOrder(model Order) storehttp.Order {
+	return storehttp.Order{
 		ID:       model.Id,
 		PetID:    model.PetId,
 		Quantity: model.Quantity,
@@ -40,7 +40,7 @@ func toTransportOrder(model Order) storehttpmapper.Order {
 	}
 }
 
-func fromTransportOrder(order storehttpmapper.Order) Order {
+func fromTransportOrder(order storehttp.Order) Order {
 	return Order{
 		Id:       order.ID,
 		PetId:    order.PetID,
@@ -88,7 +88,7 @@ func (api *StoreAPI) GetOrderById(c *gin.Context) {
 		respondStoreError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, fromTransportOrder(storehttpmapper.FromDomainOrder(order)))
+	c.JSON(http.StatusOK, fromTransportOrder(storehttp.FromDomainOrder(order)))
 }
 
 // Post /v2/store/order
@@ -99,20 +99,20 @@ func (api *StoreAPI) PlaceOrder(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	order := storehttpmapper.ToDomainOrder(toTransportOrder(payload))
+	order := storehttp.ToDomainOrder(toTransportOrder(payload))
 	saved, err := api.service.PlaceOrder(c.Request.Context(), order)
 	if err != nil {
 		respondStoreError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, fromTransportOrder(storehttpmapper.FromDomainOrder(saved)))
+	c.JSON(http.StatusOK, fromTransportOrder(storehttp.FromDomainOrder(saved)))
 }
 
 func respondStoreError(c *gin.Context, err error) {
 	if err == nil {
 		return
 	}
-	if err == storeports.ErrNotFound {
+	if err == ports.ErrNotFound {
 		respondError(c, http.StatusNotFound, err)
 		return
 	}

@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application/types"
+	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/service/types"
 )
 
 // WorkflowOrchestrator exposes durable workflow operations required by the pets bounded context.

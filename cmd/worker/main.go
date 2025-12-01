@@ -15,14 +15,14 @@ import (
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 
-	petactivities "github.com/GIT_USER_ID/GIT_REPO_ID/internal/durable/temporal/activities/pets"
-	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/durable/temporal/workflows/pets"
-	petsmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/adapters/memory"
-	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/adapters/persistence/postgres"
-	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application"
-	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/ports"
+	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/ports"
+	petsmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/repository/memory"
+	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/repository/postgres"
+	petsservice "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/service"
+	platformdb "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/db"
 	platformobservability "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/observability"
-	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/postgres"
+	petactivities "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/temporal/activities/pets"
+	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/temporal/workflows/pets"
 )
 
 func main() {
@@ -43,11 +43,11 @@ func main() {
 
 	petRepo, cleanupRepo := buildPetRepository(ctx, logger)
 	defer cleanupRepo()
-	petService := petsapp.NewService(
+	petService := petsservice.NewService(
 		petRepo,
-		petsapp.WithLogger(logger),
-		petsapp.WithTracer(instruments.Tracer("internal.pets.application")),
-		petsapp.WithMeter(instruments.Meter("internal.pets.application")),
+		petsservice.WithLogger(logger),
+		petsservice.WithTracer(instruments.Tracer("internal.pets.service")),
+		petsservice.WithMeter(instruments.Meter("internal.pets.service")),
 	)
 	petActivities := petactivities.NewActivities(petService)
 
@@ -82,13 +82,13 @@ func main() {
 	logger.Info("Temporal worker stopped")
 }
 
-func buildPetRepository(ctx context.Context, logger *slog.Logger) (petsports.Repository, func()) {
+func buildPetRepository(ctx context.Context, logger *slog.Logger) (ports.Repository, func()) {
 	dsn := os.Getenv("POSTGRES_DSN")
 	if strings.TrimSpace(dsn) == "" {
 		logger.Warn("POSTGRES_DSN not set, falling back to in-memory pet repository")
 		return petsmemory.NewRepository(), func() {}
 	}
-	db, err := platformpostgres.Connect(ctx, dsn)
+	db, err := platformdb.Connect(ctx, dsn)
 	if err != nil {
 		logger.Warn("worker failed to connect to postgres (falling back to memory)", slog.String("error", err.Error()))
 		return petsmemory.NewRepository(), func() {}

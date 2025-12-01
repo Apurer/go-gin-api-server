@@ -8,39 +8,39 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	pethttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/adapters/http/mapper"
-	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application"
-	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application/types"
-	petsdomain "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/domain"
-	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/ports"
+	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/domain"
+	petshttp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/http"
+	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/ports"
+	petsservice "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/service"
+	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/service/types"
 )
 
 // PetAPI wires HTTP transport with the pets bounded context service and workflows.
 type PetAPI struct {
-	service   *petsapp.Service
-	workflows petsports.WorkflowOrchestrator
+	service   *petsservice.Service
+	workflows ports.WorkflowOrchestrator
 }
 
 // NewPetAPI creates a PetAPI backed by the provided service.
-func NewPetAPI(service *petsapp.Service, workflows petsports.WorkflowOrchestrator) PetAPI {
+func NewPetAPI(service *petsservice.Service, workflows ports.WorkflowOrchestrator) PetAPI {
 	return PetAPI{service: service, workflows: workflows}
 }
 
 // Post /v2/pet
 // Add a new pet to the store
 func (api *PetAPI) AddPet(c *gin.Context) {
-	var payload pethttpmapper.MutationPet
+	var payload petshttp.MutationPet
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	input := petstypes.AddPetInput{PetMutationInput: pethttpmapper.ToMutationInput(payload)}
+	input := petstypes.AddPetInput{PetMutationInput: petshttp.ToMutationInput(payload)}
 	saved, err := api.createPet(c.Request.Context(), input)
 	if err != nil {
 		respondPetServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, pethttpmapper.FromProjection(saved))
+	c.JSON(http.StatusOK, petshttp.FromProjection(saved))
 }
 
 func (api *PetAPI) createPet(ctx context.Context, input petstypes.AddPetInput) (*petstypes.PetProjection, error) {
@@ -73,7 +73,7 @@ func (api *PetAPI) FindPetsByStatus(c *gin.Context) {
 		respondPetServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, pethttpmapper.FromProjectionList(result))
+	c.JSON(http.StatusOK, petshttp.FromProjectionList(result))
 }
 
 // Get /v2/pet/findByTags
@@ -86,7 +86,7 @@ func (api *PetAPI) FindPetsByTags(c *gin.Context) {
 		respondPetServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, pethttpmapper.FromProjectionList(result))
+	c.JSON(http.StatusOK, petshttp.FromProjectionList(result))
 }
 
 // Get /v2/pet/:petId
@@ -101,24 +101,24 @@ func (api *PetAPI) GetPetById(c *gin.Context) {
 		respondPetServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, pethttpmapper.FromProjection(pet))
+	c.JSON(http.StatusOK, petshttp.FromProjection(pet))
 }
 
 // Put /v2/pet
 // Update an existing pet
 func (api *PetAPI) UpdatePet(c *gin.Context) {
-	var payload pethttpmapper.MutationPet
+	var payload petshttp.MutationPet
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	input := petstypes.UpdatePetInput{PetMutationInput: pethttpmapper.ToMutationInput(payload)}
+	input := petstypes.UpdatePetInput{PetMutationInput: petshttp.ToMutationInput(payload)}
 	updated, err := api.service.UpdatePet(c.Request.Context(), input)
 	if err != nil {
 		respondPetServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, pethttpmapper.FromProjection(updated))
+	c.JSON(http.StatusOK, petshttp.FromProjection(updated))
 }
 
 // Post /v2/pet/:petId
@@ -144,7 +144,7 @@ func (api *PetAPI) UpdatePetWithForm(c *gin.Context) {
 		respondPetServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, pethttpmapper.FromProjection(updated))
+	c.JSON(http.StatusOK, petshttp.FromProjection(updated))
 }
 
 // Post /v2/pet/:petId/groom
@@ -154,12 +154,12 @@ func (api *PetAPI) GroomPet(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var payload pethttpmapper.GroomingOperation
+	var payload petshttp.GroomingOperation
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	input, err := pethttpmapper.ToGroomPetInput(id, payload)
+	input, err := petshttp.ToGroomPetInput(id, payload)
 	if err != nil {
 		respondError(c, http.StatusBadRequest, err)
 		return
@@ -169,7 +169,7 @@ func (api *PetAPI) GroomPet(c *gin.Context) {
 		respondPetServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, pethttpmapper.FromProjection(updated))
+	c.JSON(http.StatusOK, petshttp.FromProjection(updated))
 }
 
 // Post /v2/pet/:petId/uploadImage
@@ -213,11 +213,11 @@ func respondPetServiceError(c *gin.Context, err error) {
 	if err == nil {
 		return
 	}
-	if err == petsports.ErrNotFound {
+	if err == ports.ErrNotFound {
 		respondError(c, http.StatusNotFound, err)
 		return
 	}
-	if errors.Is(err, petsdomain.ErrInvalidHair) || errors.Is(err, petsdomain.ErrInvalidGrooming) {
+	if errors.Is(err, domain.ErrInvalidHair) || errors.Is(err, domain.ErrInvalidGrooming) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
