@@ -16,19 +16,19 @@ import (
 
 	petstoreserver "github.com/GIT_USER_ID/GIT_REPO_ID/go"
 
-	petsmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/adapters/memory"
-	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/adapters/persistence/postgres"
-	petsworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/adapters/workflows"
-	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application"
-	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/ports"
+	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/ports"
+	petsmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/repository/memory"
+	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/repository/postgres"
+	petsservice "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/service"
+	petsworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/workflows"
+	platformdb "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/db"
 	platformobservability "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/observability"
-	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/postgres"
 
-	storememory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/adapters/memory"
-	storeapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/application"
+	storememory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/repository/memory"
+	storeservice "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/service"
 
-	usermemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/adapters/memory"
-	userapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/application"
+	usermemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/repository/memory"
+	userservice "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/service"
 )
 
 func main() {
@@ -49,13 +49,13 @@ func main() {
 
 	petRepo, cleanupRepo := buildPetRepository(ctx, logger)
 	defer cleanupRepo()
-	petService := petsapp.NewService(
+	petService := petsservice.NewService(
 		petRepo,
-		petsapp.WithLogger(logger),
-		petsapp.WithTracer(instruments.Tracer("internal.pets.application")),
-		petsapp.WithMeter(instruments.Meter("internal.pets.application")),
+		petsservice.WithLogger(logger),
+		petsservice.WithTracer(instruments.Tracer("internal.pets.service")),
+		petsservice.WithMeter(instruments.Meter("internal.pets.service")),
 	)
-	var petWorkflows petsports.WorkflowOrchestrator = petsworkflows.NewInlinePetWorkflows(petService)
+	var petWorkflows ports.WorkflowOrchestrator = petsworkflows.NewInlinePetWorkflows(petService)
 	if temporalClient, err := connectTemporalClient(instruments); err != nil {
 		logger.Warn("Temporal workflows unavailable, running inline AddPet", slog.String("error", err.Error()))
 	} else {
@@ -63,8 +63,8 @@ func main() {
 		petWorkflows = petsworkflows.NewTemporalPetWorkflows(temporalClient)
 		logger.Info("Temporal workflows enabled", slog.String("namespace", envOrDefault("TEMPORAL_NAMESPACE", client.DefaultNamespace)))
 	}
-	storeService := storeapp.NewService(storememory.NewRepository())
-	userService := userapp.NewService(usermemory.NewRepository())
+	storeService := storeservice.NewService(storememory.NewRepository())
+	userService := userservice.NewService(usermemory.NewRepository())
 
 	handlers := petstoreserver.ApiHandleFunctions{
 		PetAPI:   petstoreserver.NewPetAPI(petService, petWorkflows),
@@ -84,13 +84,13 @@ func main() {
 	}
 }
 
-func buildPetRepository(ctx context.Context, logger *slog.Logger) (petsports.Repository, func()) {
+func buildPetRepository(ctx context.Context, logger *slog.Logger) (ports.Repository, func()) {
 	dsn := os.Getenv("POSTGRES_DSN")
 	if strings.TrimSpace(dsn) == "" {
 		logger.Warn("POSTGRES_DSN not set, falling back to in-memory pet repository")
 		return petsmemory.NewRepository(), func() {}
 	}
-	db, err := platformpostgres.Connect(ctx, dsn)
+	db, err := platformdb.Connect(ctx, dsn)
 	if err != nil {
 		logger.Warn("failed to connect to postgres, falling back to memory", slog.String("error", err.Error()))
 		return petsmemory.NewRepository(), func() {}
