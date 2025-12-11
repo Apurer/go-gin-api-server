@@ -8,21 +8,21 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	pethttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/adapters/http/mapper"
-	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application"
-	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application/types"
-	petsdomain "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/domain"
-	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/ports"
+	pethttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/http/mapper"
+	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
+	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
+	petsdomain "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
+	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
 )
 
 // PetAPI wires HTTP transport with the pets bounded context service and workflows.
 type PetAPI struct {
-	service   *petsapp.Service
+	service   petsapp.Port
 	workflows petsports.WorkflowOrchestrator
 }
 
 // NewPetAPI creates a PetAPI backed by the provided service.
-func NewPetAPI(service *petsapp.Service, workflows petsports.WorkflowOrchestrator) PetAPI {
+func NewPetAPI(service petsapp.Port, workflows petsports.WorkflowOrchestrator) PetAPI {
 	return PetAPI{service: service, workflows: workflows}
 }
 

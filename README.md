@@ -1,6 +1,6 @@
 # Clean DDD Petstore (Go + Gin + Temporal)
 
-This repo keeps the OpenAPI-generated Gin transport intact while moving the business logic into a Clean Architecture layout. Bounded contexts for pets, store, and users live under `internal/`, and Temporal can orchestrate pet creation when available.
+This repo keeps the OpenAPI-generated Gin transport intact while moving the business logic into a Clean Architecture layout. Bounded contexts for pets, store, and users live under `internal/domains/`, and Temporal can orchestrate pet creation when available.
 
 ## Layout
 ```
@@ -11,34 +11,37 @@ go-gin-api-server/
   - worker/main.go           # Temporal worker wiring for pet creation
 - go/                        # Generated Gin router + DTOs delegating to application services
 - internal/
+  - domains/                 # Domain slices (bounded contexts)
+    - pets/                  # Pets bounded context (domain, application, ports, adapters)
+    - store/                 # Store/orders bounded context
+    - users/                 # User management bounded context
   - clients/http/partner/    # Partner sync HTTP client used by the mapper
   - durable/temporal/        # Workflows, activities, sequences for pet creation
-  - pets/                    # Pets bounded context (domain, application, ports, adapters)
   - platform/                # Shared platform concerns (OTEL, Postgres helpers)
   - shared/                  # Cross-cutting projection helpers
-  - store/                   # Store/orders bounded context
-  - users/                   # User management bounded context
 - Dockerfile
 - description.md
 - project.md
 - README.md
 ```
 
+**Domain slices** (bounded contexts): `internal/domains/pets`, `internal/domains/store`, `internal/domains/users`. Everything else under `internal/` supports those domains (platform, integrations, workflows).
+
 ## Runtime entrypoints
 - `cmd/api/main.go`: Boots slog + OpenTelemetry, selects the pets repository (Postgres via `POSTGRES_DSN` with automigrate, otherwise in-memory), builds services, and chooses the pet workflow orchestrator (Temporal client when reachable; inline when `TEMPORAL_DISABLED=1` or dialing fails). Wires generated handlers (`go/api_*.go`) into `go/routers.go` and listens on `:$PORT` (default `8080`). Serves `/openapi.(json|yaml)` and `/swagger`.
 - `cmd/worker/main.go`: Shares the same repository selection and observability setup, registers the pet creation workflow and activity bundle on queue `PET_CREATION`, and runs against the Temporal frontend (`TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`).
 
 ## Bounded contexts
-### Pets (`internal/pets`)
+### Pets (`internal/domains/pets`)
 - `domain`: Pet aggregate with category, tags, external reference, hair length, and status invariants.
 - `application`: Use cases with tracing/metrics/logging; command/query inputs live under `application/types/` (mutations, queries, imports, grooming, media).
 - `ports`: Repository and workflow orchestrator interfaces plus shared errors.
 - `adapters`: HTTP mapper (`adapters/http/mapper`), in-memory repository (`adapters/memory`), Postgres repository with automigrations and array/JSON mapping (`adapters/persistence/postgres`), workflow orchestrators (inline vs Temporal) under `adapters/workflows`, and an external partner mapper backed by `internal/clients/http/partner`.
 
-### Store (`internal/store`)
+### Store (`internal/domains/store`)
 - Order aggregate and statuses, application service with inventory calculation, repository interface, in-memory repository, and HTTP mappers.
 
-### Users (`internal/users`)
+### Users (`internal/domains/users`)
 - User entity, application service for CRUD/login, repository interface, in-memory repository, and HTTP mappers.
 
 ## Platform and shared pieces
@@ -69,15 +72,15 @@ Environment knobs:
 - Interactive docs are available at `/swagger`; handlers in `go/api_*.go` delegate to the application services through mappers while preserving the generated DTOs.
 
 ## Integrating other Pet APIs
-- Keep the domain model authoritative and treat providers as adapters: `internal/pets/adapters/external/partner` maps domain pets to partner payloads and uses `internal/clients/http/partner` to sync.
+- Keep the domain model authoritative and treat providers as adapters: `internal/domains/pets/adapters/external/partner` maps domain pets to partner payloads and uses `internal/clients/http/partner` to sync.
 - Store external identities on the aggregate (`ExternalReference`) so you can reconcile records without leaking provider details elsewhere.
 - Map provider-specific fields inside the adapter; persist only what you own, and round-trip untouched provider attributes via the mapper if needed.
 
 ## Handling transient operation data
-- For flows that need temporary inputs (e.g., grooming trims), keep those values on the command DTO, let the application service compute the durable result, and update the aggregate via domain methods that enforce invariants (`internal/pets/domain/pet.go`).
+- For flows that need temporary inputs (e.g., grooming trims), keep those values on the command DTO, let the application service compute the durable result, and update the aggregate via domain methods that enforce invariants (`internal/domains/pets/domain/pet.go`).
 - `POST /v2/pet/{petId}/groom` demonstrates this: the payload feeds the calculation while the stored `hairLengthCm` reflects only the resulting value.
 
 ## Next steps
 - Swap in real storage for store/users, or extend the pets Postgres adapter with migrations/tests.
-- Add acceptance tests per bounded context (e.g., `internal/pets/application/service_test.go`).
+- Add acceptance tests per bounded context (e.g., `internal/domains/pets/application/service_test.go`).
 - Integrate auth/api-key middleware at the router level if required by your environment.

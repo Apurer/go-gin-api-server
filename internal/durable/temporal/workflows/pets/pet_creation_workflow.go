@@ -1,8 +1,8 @@
 package pets
 
 import (
+	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/durable/temporal/sequences"
-	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application/types"
 	"go.temporal.io/sdk/workflow"
 )
 

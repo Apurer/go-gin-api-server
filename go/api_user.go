@@ -7,18 +7,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	userhttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/adapters/http/mapper"
-	userapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/application"
-	userports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/users/ports"
+	userhttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/http/mapper"
+	userdomain "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/domain"
+	userports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/ports"
 )
 
 // UserAPI implements the user OpenAPI section.
 type UserAPI struct {
-	service *userapp.Service
+	service userports.Service
 }
 
 // NewUserAPI wires dependencies.
-func NewUserAPI(service *userapp.Service) UserAPI {
+func NewUserAPI(service userports.Service) UserAPI {
 	return UserAPI{service: service}
 }
 
@@ -72,7 +72,11 @@ func (api *UserAPI) CreateUser(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	user := userhttpmapper.ToDomainUser(toTransportUser(payload))
+	user, err := userhttpmapper.ToDomainUser(toTransportUser(payload))
+	if err != nil {
+		respondUserError(c, err)
+		return
+	}
 	saved, err := api.service.CreateUser(c.Request.Context(), user)
 	if err != nil {
 		respondUserError(c, err)
@@ -89,7 +93,11 @@ func (api *UserAPI) CreateUsersWithArrayInput(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	users := userhttpmapper.ToDomainUsers(toTransportUserList(payload))
+	users, err := userhttpmapper.ToDomainUsers(toTransportUserList(payload))
+	if err != nil {
+		respondUserError(c, err)
+		return
+	}
 	created, err := api.service.CreateUsers(c.Request.Context(), users)
 	if err != nil {
 		respondUserError(c, err)
@@ -106,7 +114,11 @@ func (api *UserAPI) CreateUsersWithListInput(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	users := userhttpmapper.ToDomainUsers(toTransportUserList(payload))
+	users, err := userhttpmapper.ToDomainUsers(toTransportUserList(payload))
+	if err != nil {
+		respondUserError(c, err)
+		return
+	}
 	created, err := api.service.CreateUsers(c.Request.Context(), users)
 	if err != nil {
 		respondUserError(c, err)
@@ -175,7 +187,11 @@ func (api *UserAPI) UpdateUser(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	user := userhttpmapper.ToDomainUser(toTransportUser(payload))
+	user, err := userhttpmapper.ToDomainUser(toTransportUser(payload))
+	if err != nil {
+		respondUserError(c, err)
+		return
+	}
 	updated, err := api.service.Update(c.Request.Context(), username, user)
 	if err != nil {
 		respondUserError(c, err)
@@ -190,6 +206,14 @@ func respondUserError(c *gin.Context, err error) {
 	}
 	if err == userports.ErrNotFound {
 		respondError(c, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, userports.ErrInvalidCredentials) ||
+		errors.Is(err, userdomain.ErrEmptyUsername) ||
+		errors.Is(err, userdomain.ErrEmptyPassword) ||
+		errors.Is(err, userdomain.ErrWeakPassword) ||
+		errors.Is(err, userdomain.ErrInvalidEmail) {
+		respondError(c, http.StatusBadRequest, err)
 		return
 	}
 	respondError(c, http.StatusInternalServerError, err)

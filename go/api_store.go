@@ -10,22 +10,23 @@
 package petstoreserver
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
-	storehttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/adapters/http/mapper"
-	storeapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/application"
-	storeports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/store/ports"
+	storehttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/adapters/http/mapper"
+	storedomain "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/domain"
+	storeports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/ports"
 )
 
 // StoreAPI implements the store/order OpenAPI operations.
 type StoreAPI struct {
-	service *storeapp.Service
+	service storeports.Service
 }
 
 // NewStoreAPI wires the application service.
-func NewStoreAPI(service *storeapp.Service) StoreAPI {
+func NewStoreAPI(service storeports.Service) StoreAPI {
 	return StoreAPI{service: service}
 }
 
@@ -99,7 +100,11 @@ func (api *StoreAPI) PlaceOrder(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
-	order := storehttpmapper.ToDomainOrder(toTransportOrder(payload))
+	order, err := storehttpmapper.ToDomainOrder(toTransportOrder(payload))
+	if err != nil {
+		respondError(c, http.StatusBadRequest, err)
+		return
+	}
 	saved, err := api.service.PlaceOrder(c.Request.Context(), order)
 	if err != nil {
 		respondStoreError(c, err)
@@ -114,6 +119,12 @@ func respondStoreError(c *gin.Context, err error) {
 	}
 	if err == storeports.ErrNotFound {
 		respondError(c, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, storedomain.ErrInvalidPetID) ||
+		errors.Is(err, storedomain.ErrInvalidQuantity) ||
+		errors.Is(err, storedomain.ErrInvalidStatus) {
+		respondError(c, http.StatusBadRequest, err)
 		return
 	}
 	respondError(c, http.StatusInternalServerError, err)

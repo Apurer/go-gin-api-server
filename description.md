@@ -8,9 +8,10 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 - `cmd/worker`: Temporal worker composition root for pet creation workflows.
 - `go/`: Generated Gin transport that mounts routes and delegates to application services (`go/api_*.go`, `go/routers.go`).
 - `internal/`: Domain/application code, adapters, and platform helpers.
+  - `domains`: Bounded contexts (domain, application, ports, adapters).
+    - `pets`, `store`, `users`
   - `clients/http/partner`: Minimal client used by the partner mapper.
   - `durable/temporal`: Workflows, activities, and sequences for pet creation.
-  - `pets`, `store`, `users`: Bounded contexts (domain, application, ports, adapters).
   - `platform`: Observability and Postgres helpers.
   - `shared`: Cross-cutting projection helpers.
 
@@ -31,7 +32,7 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 - Generated Gin router (`go/routers.go`) mounts all OpenAPI routes, serves spec files, and hosts Swagger UI.
 - `go/api_pet.go`, `go/api_store.go`, `go/api_user.go` adapt HTTP payloads to application types via mappers and call into services/workflows. Grooming (`POST /v2/pet/:petId/groom`) and upload endpoints are wired here.
 
-## Pets bounded context (`internal/pets`)
+## Pets bounded context (`internal/domains/pets`)
 ### Domain
 - `domain/pet.go`: Pet aggregate with category, tags, external reference, hair length, and status (`available|pending|sold`). Invariants enforce non-empty name/photos, non-negative hair length, and grooming trims not exceeding the initial measurement.
 ### Application
@@ -52,13 +53,13 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 - `sequences/pet_persistence_sequence.go`: Executes the ordered `CreatePet` activity with retries/backoff.
 - `activities/pets/pet.go`: Activity bundle that delegates to the pets service.
 
-## Store bounded context (`internal/store`)
+## Store bounded context (`internal/domains/store`)
 - Domain: `order.go` with status enum (`placed|approved|delivered`).
 - Application: `service.go` supports `PlaceOrder`, `GetOrderByID`, `DeleteOrder`, and `Inventory` aggregation.
 - Ports: Repository interface + `ErrNotFound`.
 - Adapters: `adapters/memory` repository; `adapters/http/mapper` converts generated DTOs to domain orders.
 
-## Users bounded context (`internal/users`)
+## Users bounded context (`internal/domains/users`)
 - Domain: `user.go` entity.
 - Application: `service.go` covers create (single/batch), update, delete, get by username, and a simple login/logout that stores tokens in-memory.
 - Ports: Repository interface + `ErrNotFound`.

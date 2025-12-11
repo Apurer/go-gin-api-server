@@ -15,12 +15,12 @@ import (
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 
+	petsmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/memory"
+	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/persistence/postgres"
+	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
+	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
 	petactivities "github.com/GIT_USER_ID/GIT_REPO_ID/internal/durable/temporal/activities/pets"
 	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/durable/temporal/workflows/pets"
-	petsmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/adapters/memory"
-	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/adapters/persistence/postgres"
-	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application"
-	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/ports"
 	platformobservability "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/observability"
 	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/postgres"
 )

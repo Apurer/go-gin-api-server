@@ -10,18 +10,21 @@ go-gin-api-server/
   - worker/main.go           # Temporal worker wiring
 - go/                        # Generated Gin router + DTOs that call internal services
 - internal/                  # Domain/application code by bounded context
+  - domains/                 # Domain slices (bounded contexts)
+    - pets/                  # Domain: Pets bounded context
+    - store/                 # Domain: Store/orders bounded context
+    - users/                 # Domain: Users bounded context
   - clients/                 # HTTP client stubs for partner integrations
   - durable/                 # Temporal workflows/activities/sequences
-  - pets/                    # Pets bounded context
   - platform/                # Shared platform concerns (OTEL, Postgres)
   - shared/                  # Cross-cutting helpers (projections)
-  - store/                   # Store/orders bounded context
-  - users/                   # Users bounded context
 - Dockerfile
 - README.md
 - description.md
 - project.md                 # This file
 ```
+
+**Domain slices** live at `internal/domains/pets`, `internal/domains/store`, and `internal/domains/users`; the other `internal/` packages provide platform, workflow, or integration support for those bounded contexts.
 
 ## Processes and transport
 
@@ -32,7 +35,7 @@ go-gin-api-server/
 
 ## Bounded contexts (internal)
 
-### Pets (`internal/pets`)
+### Pets (`internal/domains/pets`)
 - `domain/`: Pet aggregate, value objects (category, tags, external reference), and invariants for grooming or hair length.
 - `application/`: Use-case service with OTEL metrics and tracing; command/query inputs live in `application/types/`.
 - `ports/`: Interfaces for repository and workflow orchestrator plus shared errors.
@@ -42,14 +45,14 @@ go-gin-api-server/
 - `adapters/external/partner`: Mapper between domain pets and a sample partner schema.
 - `adapters/workflows`: Workflow orchestrators (inline versus Temporal client).
 
-### Store (`internal/store`)
+### Store (`internal/domains/store`)
 - `domain/`: Order aggregate and statuses.
 - `application/`: Order service with inventory calculation.
 - `ports/`: Repository interface and errors.
 - `adapters/memory`: In-memory repository.
 - `adapters/http/mapper`: Maps generated DTOs to domain orders.
 
-### Users (`internal/users`)
+### Users (`internal/domains/users`)
 - `domain/`: User entity.
 - `application/`: User service for CRUD and login flows.
 - `ports/`: Repository interface.

@@ -10,20 +10,14 @@
 package main
 
 import (
+	"context"
 	"log"
 
-	// WARNING!
-	// Pass --git-repo-id and --git-user-id properties when generating the code
-	//
-	sw "github.com/GIT_USER_ID/GIT_REPO_ID/go"
+	apiapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/app/api"
 )
 
 func main() {
-	routes := sw.ApiHandleFunctions{}
-
-	log.Printf("Server started")
-
-	router := sw.NewRouter(routes)
-
-	log.Fatal(router.Run(":8080"))
+	if err := apiapp.Run(context.Background()); err != nil {
+		log.Fatal(err)
+	}
 }

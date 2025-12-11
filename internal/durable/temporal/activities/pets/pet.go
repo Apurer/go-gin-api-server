@@ -6,8 +6,8 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
-	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application"
-	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/pets/application/types"
+	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
+	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
 )
 
 const (
