@@ -17,6 +17,7 @@ import (
 	petstoreserver "github.com/GIT_USER_ID/GIT_REPO_ID/go"
 
 	petsmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/memory"
+	petsobs "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/observability"
 	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/persistence/postgres"
 	petsworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/workflows"
 	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
@@ -49,11 +50,12 @@ func Run(ctx context.Context) error {
 
 	petRepo, cleanupRepo := buildPetRepository(ctx, logger)
 	defer cleanupRepo()
-	petService := petsapp.NewService(
-		petRepo,
-		petsapp.WithLogger(logger),
-		petsapp.WithTracer(instruments.Tracer("internal.pets.application")),
-		petsapp.WithMeter(instruments.Meter("internal.pets.application")),
+	corePetService := petsapp.NewService(petRepo)
+	petService := petsobs.New(
+		corePetService,
+		petsobs.WithLogger(logger),
+		petsobs.WithTracer(instruments.Tracer("internal.pets.application")),
+		petsobs.WithMeter(instruments.Meter("internal.pets.application")),
 	)
 	var petWorkflows petsports.WorkflowOrchestrator = petsworkflows.NewInlinePetWorkflows(petService)
 	if temporalClient, err := connectTemporalClient(instruments); err != nil {

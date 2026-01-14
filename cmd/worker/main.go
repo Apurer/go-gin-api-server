@@ -16,6 +16,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	petsmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/memory"
+	petsobs "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/observability"
 	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/persistence/postgres"
 	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
 	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
@@ -43,11 +44,12 @@ func main() {
 
 	petRepo, cleanupRepo := buildPetRepository(ctx, logger)
 	defer cleanupRepo()
-	petService := petsapp.NewService(
-		petRepo,
-		petsapp.WithLogger(logger),
-		petsapp.WithTracer(instruments.Tracer("internal.pets.application")),
-		petsapp.WithMeter(instruments.Meter("internal.pets.application")),
+	corePetService := petsapp.NewService(petRepo)
+	petService := petsobs.New(
+		corePetService,
+		petsobs.WithLogger(logger),
+		petsobs.WithTracer(instruments.Tracer("internal.pets.application")),
+		petsobs.WithMeter(instruments.Meter("internal.pets.application")),
 	)
 	petActivities := petactivities.NewActivities(petService)
 
