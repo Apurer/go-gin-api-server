@@ -11,7 +11,6 @@ import (
 	pethttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/http/mapper"
 	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
 	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
-	petsdomain "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
 	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
 )
 
@@ -217,7 +216,7 @@ func respondPetServiceError(c *gin.Context, err error) {
 		respondError(c, http.StatusNotFound, err)
 		return
 	}
-	if errors.Is(err, petsdomain.ErrInvalidHair) || errors.Is(err, petsdomain.ErrInvalidGrooming) {
+	if errors.Is(err, petsapp.ErrInvalidInput) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}

@@ -9,7 +9,6 @@ import (
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
@@ -18,8 +17,9 @@ import (
 
 const (
 	tracerName = "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/service"
-	meterName  = "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/service"
 )
+
+var noopTracer = trace.NewNoopTracerProvider().Tracer(tracerName)
 
 // Service orchestrates the pets bounded context use cases.
 type Service struct {
@@ -64,9 +64,9 @@ type serviceMetrics struct {
 func NewService(repo ports.Repository, opts ...ServiceOption) *Service {
 	s := &Service{
 		repo:    repo,
-		tracer:  otel.Tracer(tracerName),
+		tracer:  noopTracer,
 		logger:  defaultLogger(),
-		metrics: newServiceMetrics(otel.GetMeterProvider().Meter(meterName)),
+		metrics: newServiceMetrics(nil),
 	}
 	for _, opt := range opts {
 		if opt != nil {
@@ -74,13 +74,10 @@ func NewService(repo ports.Repository, opts ...ServiceOption) *Service {
 		}
 	}
 	if s.tracer == nil {
-		s.tracer = otel.Tracer(tracerName)
+		s.tracer = noopTracer
 	}
 	if s.logger == nil {
 		s.logger = defaultLogger()
-	}
-	if s.metrics == (serviceMetrics{}) {
-		s.metrics = newServiceMetrics(otel.GetMeterProvider().Meter(meterName))
 	}
 	return s
 }
@@ -344,7 +341,7 @@ func statusesToStrings(statuses []domain.Status) []string {
 func (s *Service) startSpan(ctx context.Context, name string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
 	tracer := s.tracer
 	if tracer == nil {
-		tracer = otel.Tracer(tracerName)
+		tracer = noopTracer
 	}
 	return tracer.Start(ctx, name, trace.WithAttributes(attrs...))
 }
@@ -370,12 +367,13 @@ func (s *Service) handleError(ctx context.Context, span trace.Span, err error, m
 	if err == nil {
 		return nil
 	}
+	mapped := mapError(err)
 	if span != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(mapped)
+		span.SetStatus(codes.Error, mapped.Error())
 	}
-	s.logError(ctx, msg, err, attrs...)
-	return err
+	s.logError(ctx, msg, mapped, attrs...)
+	return mapped
 }
 
 func buildPetFromMutation(input types.PetMutationInput) (*domain.Pet, error) {
