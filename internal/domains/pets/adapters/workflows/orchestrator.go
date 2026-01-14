@@ -59,11 +59,11 @@ func (o *TemporalPetWorkflows) CreatePet(ctx context.Context, input petstypes.Ad
 
 // InlinePetWorkflows executes the service directly without Temporal, useful for tests or dev fallbacks.
 type InlinePetWorkflows struct {
-	service *petsapp.Service
+	service petsapp.Port
 }
 
 // NewInlinePetWorkflows wraps the pets service for synchronous execution.
-func NewInlinePetWorkflows(service *petsapp.Service) *InlinePetWorkflows {
+func NewInlinePetWorkflows(service petsapp.Port) *InlinePetWorkflows {
 	return &InlinePetWorkflows{service: service}
 }
 

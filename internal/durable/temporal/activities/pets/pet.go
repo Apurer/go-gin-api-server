@@ -17,11 +17,11 @@ const (
 
 // Activities groups activities that operate on the pets bounded context.
 type Activities struct {
-	service *petsapp.Service
+	service petsapp.Port
 }
 
 // NewActivities wires the pets service into the Temporal activities bundle.
-func NewActivities(service *petsapp.Service) *Activities {
+func NewActivities(service petsapp.Port) *Activities {
 	return &Activities{service: service}
 }
 
