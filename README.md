@@ -17,7 +17,7 @@ go-gin-api-server/
     - users/                 # User management bounded context
   - clients/http/partner/    # Partner sync HTTP client used by the mapper
   - platform/temporal/       # Workflows, activities, sequences for pet creation
-  - platform/                # Shared platform concerns (OTEL, Postgres helpers)
+  - platform/                # Shared platform concerns (OTEL, Postgres helpers, migrations)
   - shared/                  # Cross-cutting projection helpers
 - Dockerfile
 - description.md
@@ -28,7 +28,7 @@ go-gin-api-server/
 **Domain slices** (bounded contexts): `internal/domains/pets`, `internal/domains/store`, `internal/domains/users`. Everything else under `internal/` supports those domains (platform, integrations, workflows).
 
 ## Runtime entrypoints
-- `cmd/api/main.go`: Boots slog + OpenTelemetry, selects repositories (Postgres via `POSTGRES_DSN` with automigrate, otherwise in-memory), builds services, and chooses the pet workflow orchestrator (Temporal client when reachable; inline when `TEMPORAL_DISABLED=1` or dialing fails). Wires generated handlers (`go/api_*.go`) into `go/routers.go` and listens on `:$PORT` (default `8080`). Serves `/openapi.(json|yaml)` and `/swagger`. Optional session purge ticker runs when `SESSION_PURGE_INTERVAL_MINUTES` is set.
+- `cmd/api/main.go`: Boots slog + OpenTelemetry, loads config from env, selects repositories (Postgres via `POSTGRES_DSN`, otherwise in-memory), runs schema migrations (`internal/platform/migrations`), builds services, and chooses the pet workflow orchestrator (Temporal client when reachable; inline when `TEMPORAL_DISABLED=1`). Wires generated handlers (`go/api_*.go`) into `go/routers.go` and listens on `:$PORT` (default `8080`). Serves `/openapi.(json|yaml)` and `/swagger`. Health endpoints: `/healthz`, `/readyz` (checks DB + Temporal when enabled), and `/debug/config` (sanitized view). Optional session purge ticker runs when `SESSION_PURGE_INTERVAL_MINUTES` is set.
 - `cmd/worker/main.go`: Shares the same repository selection and observability setup, registers the pet creation workflow and activity bundle on queue `PET_CREATION`, and runs against the Temporal frontend (`TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`).
 - `cmd/session-purger/main.go`: One-off CLI to purge expired user sessions using `POSTGRES_DSN`; respects `SESSION_TTL_HOURS` for expiry.
 
@@ -37,13 +37,13 @@ go-gin-api-server/
 - `domain`: Pet aggregate with category, tags, external reference, hair length, and status invariants.
 - `application`: Use cases with tracing/metrics/logging; command/query inputs live under `application/types/` (mutations, queries, imports, grooming, media).
 - `ports`: Repository and workflow orchestrator interfaces plus shared errors.
-- `adapters`: HTTP mapper (`adapters/http/mapper`), in-memory repository (`adapters/memory`), Postgres repository with automigrations and array/JSON mapping (`adapters/persistence/postgres`), workflow orchestrators (inline vs Temporal) under `adapters/workflows`, and an external partner mapper backed by `internal/clients/http/partner`.
+- `adapters`: HTTP mapper (`adapters/http/mapper`), in-memory repository (`adapters/memory`), Postgres repository with array/JSON mapping (`adapters/persistence/postgres`; schema managed via `internal/platform/migrations`), workflow orchestrators (inline vs Temporal) under `adapters/workflows`, and an external partner mapper backed by `internal/clients/http/partner`.
 
 ### Store (`internal/domains/store`)
-- Order aggregate and statuses, application service with inventory calculation, repository interface, in-memory repository, and HTTP mappers.
+- Order aggregate and statuses, application service with inventory calculation, repository interface, in-memory repository, Postgres repository (schema via `internal/platform/migrations`), and HTTP mappers.
 
 ### Users (`internal/domains/users`)
-- User entity, application service for CRUD/login, repository interface, in-memory repository, HTTP mappers, Postgres repository, and Postgres session store (TTL via `SESSION_TTL_HOURS`, purge via ticker or CLI).
+- User entity, application service for CRUD/login, repository interface, in-memory repository, HTTP mappers, Postgres repository, and Postgres session store (schema via `internal/platform/migrations`, TTL via `SESSION_TTL_HOURS`, purge via ticker or CLI).
 
 ## Platform and shared pieces
 - `internal/platform/observability`: Slog JSON logger plus OTLP HTTP exporter (fallback to stdout), tracer/meter providers, and global propagator setup. Configured via `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_INSECURE`, and `ENVIRONMENT`.
@@ -87,6 +87,6 @@ Environment knobs:
 - `POST /v2/pet/{petId}/groom` demonstrates this: the payload feeds the calculation while the stored `hairLengthCm` reflects only the resulting value.
 
 ## Next steps
-- Swap in real storage for store/users, or extend the pets Postgres adapter with migrations/tests.
-- Add acceptance tests per bounded context (e.g., `internal/domains/pets/application/service_test.go`).
+- Add acceptance tests per bounded context (e.g., `internal/domains/pets/application/service_test.go`) including Postgres paths and Temporal inline execution.
+- Replace AutoMigrate with managed migrations tooling if you need strict schema control across environments.
 - Integrate auth/api-key middleware at the router level if required by your environment.

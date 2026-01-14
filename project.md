@@ -4,32 +4,32 @@ Updated layout for the Clean DDD Petstore that wraps the OpenAPI-generated Gin s
 
 ```
 go-gin-api-server/
-- api/                       # OpenAPI contract (source of generated transport)
-- cmd/
-  - api/main.go              # HTTP API composition root
-  - worker/main.go           # Temporal worker wiring
-  - session-purger/main.go   # One-off session purge CLI
-- go/                        # Generated Gin router + DTOs that call internal services
-- internal/                  # Domain/application code by bounded context
-  - domains/                 # Domain slices (bounded contexts)
-    - pets/                  # Domain: Pets bounded context
-    - store/                 # Domain: Store/orders bounded context
-    - users/                 # Domain: Users bounded context
-  - clients/                 # HTTP client stubs for partner integrations
-  - platform/temporal/       # Temporal workflows/activities/sequences
-  - platform/                # Shared platform concerns (OTEL, Postgres)
-  - shared/                  # Cross-cutting helpers (projections)
-- Dockerfile
-- README.md
-- description.md
-- project.md                 # This file
+api/                       # OpenAPI contract (source of generated transport)
+cmd/
+  api/main.go              # HTTP API composition root
+  worker/main.go           # Temporal worker wiring
+  session-purger/main.go   # One-off session purge CLI
+go/                        # Generated Gin router + DTOs that call internal services
+internal/                  # Domain/application code by bounded context
+  domains/                 # Domain slices (bounded contexts)
+    pets/                  # Domain: Pets bounded context
+    store/                 # Domain: Store/orders bounded context
+    users/                 # Domain: Users bounded context
+  clients/                 # HTTP client stubs for partner integrations
+  platform/temporal/       # Temporal workflows/activities/sequences
+  platform/                # Shared platform concerns (OTEL, Postgres, migrations)
+  shared/                  # Cross-cutting helpers (projections)
+Dockerfile
+README.md
+description.md
+project.md                 # This file
 ```
 
 **Domain slices** live at `internal/domains/pets`, `internal/domains/store`, and `internal/domains/users`; the other `internal/` packages provide platform, workflow, or integration support for those bounded contexts.
 
 ## Processes and transport
 
-- `cmd/api/main.go` boots the HTTP API: loads OTEL instruments, builds repositories (Postgres when `POSTGRES_DSN` is set, otherwise memory), wires services into the generated handlers (`go/api_pet.go`, `go/api_store.go`, `go/api_user.go`), mounts middleware (otelgin), and listens on `:$PORT` (default `8080`). Pet creation can run inline or via Temporal if reachable. Optional session purge ticker when `SESSION_PURGE_INTERVAL_MINUTES` is set.
+- `cmd/api/main.go` boots the HTTP API: loads OTEL instruments, builds repositories (Postgres when `POSTGRES_DSN` is set, otherwise memory), runs migrations, wires services into the generated handlers (`go/api_pet.go`, `go/api_store.go`, `go/api_user.go`), mounts middleware (otelgin), and listens on `:$PORT` (default `8080`). Pet creation can run inline or via Temporal if reachable. Optional session purge ticker when `SESSION_PURGE_INTERVAL_MINUTES` is set; health endpoints `/healthz`, `/readyz`, `/debug/config`.
 - `cmd/worker/main.go` registers the pet creation workflow and activities with Temporal and reuses the same pets service and repository wiring.
 - `cmd/session-purger/main.go` is a one-off CLI to purge expired user sessions (Postgres only).
 - `api/openapi.yaml` is the contract used by the generator. The router in `go/routers.go` also serves `/openapi.(json|yaml)` plus `/swagger` for UI.
@@ -52,6 +52,7 @@ go-gin-api-server/
 - `application/`: Order service with inventory calculation.
 - `ports/`: Repository interface and errors.
 - `adapters/memory`: In-memory repository.
+- `adapters/persistence/postgres`: GORM-backed repository (schema via `internal/platform/migrations`).
 - `adapters/http/mapper`: Maps generated DTOs to domain orders.
 
 ### Users (`internal/domains/users`)
