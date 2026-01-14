@@ -11,7 +11,7 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
   - `domains`: Bounded contexts (domain, application, ports, adapters).
     - `pets`, `store`, `users`
   - `clients/http/partner`: Minimal client used by the partner mapper.
-  - `durable/temporal`: Workflows, activities, and sequences for pet creation.
+  - `platform/temporal`: Workflows, activities, and sequences for pet creation.
   - `platform`: Observability and Postgres helpers.
   - `shared`: Cross-cutting projection helpers.
 
@@ -48,7 +48,7 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 - `adapters/workflows`: Inline orchestrator and Temporal orchestrator that starts `pets.workflows.Creation`.
 - `adapters/external/partner`: Mapper between domain pets and partner payloads/import candidates; uses `internal/clients/http/partner` (simple JSON POST with 5s timeout).
 
-## Durable workflows (`internal/durable/temporal`)
+## Durable workflows (`internal/platform/temporal`)
 - `workflows/pets/pet_creation_workflow.go`: Workflow `pets.workflows.Creation` on queue `PET_CREATION`; wraps the pet persistence sequence.
 - `sequences/pet_persistence_sequence.go`: Executes the ordered `CreatePet` activity with retries/backoff.
 - `activities/pets/pet.go`: Activity bundle that delegates to the pets service.

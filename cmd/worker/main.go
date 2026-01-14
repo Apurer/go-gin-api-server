@@ -20,10 +20,10 @@ import (
 	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/persistence/postgres"
 	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
 	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
-	petactivities "github.com/GIT_USER_ID/GIT_REPO_ID/internal/durable/temporal/activities/pets"
-	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/durable/temporal/workflows/pets"
 	platformobservability "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/observability"
 	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/postgres"
+	petactivities "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/temporal/activities/pets"
+	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/temporal/workflows/pets"
 )
 
 func main() {

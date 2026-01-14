@@ -12,7 +12,7 @@ import (
 	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
 	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
-	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/durable/temporal/workflows/pets"
+	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/temporal/workflows/pets"
 )
 
 var (

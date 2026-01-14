@@ -61,7 +61,7 @@ go-gin-api-server/
 
 ## Cross-cutting
 
-- `internal/durable/temporal`: Pet creation workflow definition (`workflows/pets`), activity bundle (`activities/pets`), and the activity sequence used by the workflow (`sequences/`).
+- `internal/platform/temporal`: Pet creation workflow definition (`workflows/pets`), activity bundle (`activities/pets`), and the activity sequence used by the workflow (`sequences/`).
 - `internal/clients/http/partner`: Minimal HTTP client for syncing pets to a partner API.
 - `internal/platform/observability`: Slog and OpenTelemetry bootstrap (`Init`) exposing tracers and meters.
 - `internal/platform/postgres`: Postgres connector used by repositories and processes.

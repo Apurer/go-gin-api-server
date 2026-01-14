@@ -16,7 +16,7 @@ go-gin-api-server/
     - store/                 # Store/orders bounded context
     - users/                 # User management bounded context
   - clients/http/partner/    # Partner sync HTTP client used by the mapper
-  - durable/temporal/        # Workflows, activities, sequences for pet creation
+  - platform/temporal/       # Workflows, activities, sequences for pet creation
   - platform/                # Shared platform concerns (OTEL, Postgres helpers)
   - shared/                  # Cross-cutting projection helpers
 - Dockerfile

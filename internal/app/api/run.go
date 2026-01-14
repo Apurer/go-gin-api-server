@@ -22,14 +22,19 @@ import (
 	petsworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/workflows"
 	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
 	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
+	storepostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/adapters/persistence/postgres"
 	platformobservability "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/observability"
 	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/postgres"
 
 	storememory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/adapters/memory"
 	storeapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/application"
+	storeports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/ports"
 
 	usermemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/memory"
+	userpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/persistence/postgres"
 	userapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/application"
+	userports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/ports"
+	"gorm.io/gorm"
 )
 
 // Run boots the Petstore HTTP API with observability, repositories, and workflows wired.
@@ -48,8 +53,10 @@ func Run(ctx context.Context) error {
 	}()
 	logger := instruments.Logger
 
-	petRepo, cleanupRepo := buildPetRepository(ctx, logger)
-	defer cleanupRepo()
+	db, cleanupDB := connectPostgres(ctx, logger)
+	defer cleanupDB()
+
+	petRepo := buildPetRepository(db)
 	corePetService := petsapp.NewService(petRepo)
 	petService := petsobs.New(
 		corePetService,
@@ -57,6 +64,12 @@ func Run(ctx context.Context) error {
 		petsobs.WithTracer(instruments.Tracer("internal.pets.application")),
 		petsobs.WithMeter(instruments.Meter("internal.pets.application")),
 	)
+	storeRepo := buildStoreRepository(db)
+	storeService := storeapp.NewService(storeRepo)
+
+	userRepo := buildUserRepository(db)
+	userService := userapp.NewService(userRepo, usermemory.NewSessionStore())
+
 	var petWorkflows petsports.WorkflowOrchestrator = petsworkflows.NewInlinePetWorkflows(petService)
 	if temporalClient, err := connectTemporalClient(instruments); err != nil {
 		logger.Warn("Temporal workflows unavailable, running inline AddPet", slog.String("error", err.Error()))
@@ -65,8 +78,6 @@ func Run(ctx context.Context) error {
 		petWorkflows = petsworkflows.NewTemporalPetWorkflows(temporalClient)
 		logger.Info("Temporal workflows enabled", slog.String("namespace", envOrDefault("TEMPORAL_NAMESPACE", client.DefaultNamespace)))
 	}
-	storeService := storeapp.NewService(storememory.NewRepository())
-	userService := userapp.NewService(usermemory.NewRepository(), usermemory.NewSessionStore())
 
 	handlers := petstoreserver.ApiHandleFunctions{
 		PetAPI:   petstoreserver.NewPetAPI(petService, petWorkflows),
@@ -88,24 +99,45 @@ func Run(ctx context.Context) error {
 	return nil
 }
 
-func buildPetRepository(ctx context.Context, logger *slog.Logger) (petsports.Repository, func()) {
-	dsn := os.Getenv("POSTGRES_DSN")
-	if strings.TrimSpace(dsn) == "" {
-		logger.Warn("POSTGRES_DSN not set, falling back to in-memory pet repository")
-		return petsmemory.NewRepository(), func() {}
+func connectPostgres(ctx context.Context, logger *slog.Logger) (*gorm.DB, func()) {
+	dsn := strings.TrimSpace(os.Getenv("POSTGRES_DSN"))
+	if dsn == "" {
+		logger.Warn("POSTGRES_DSN not set, falling back to in-memory repositories")
+		return nil, func() {}
 	}
 	db, err := platformpostgres.Connect(ctx, dsn)
 	if err != nil {
-		logger.Warn("failed to connect to postgres, falling back to memory", slog.String("error", err.Error()))
-		return petsmemory.NewRepository(), func() {}
+		logger.Warn("failed to connect to postgres, falling back to in-memory repositories", slog.String("error", err.Error()))
+		return nil, func() {}
 	}
 	sqlDB, err := db.DB()
 	if err != nil {
-		logger.Warn("failed to unwrap postgres connection, falling back to memory", slog.String("error", err.Error()))
-		return petsmemory.NewRepository(), func() {}
+		logger.Warn("failed to unwrap postgres connection, falling back to in-memory repositories", slog.String("error", err.Error()))
+		return nil, func() {}
 	}
-	logger.Info("pet repository configured with postgres")
-	return petspostgres.NewRepository(db), func() { _ = sqlDB.Close() }
+	logger.Info("postgres connection established for repositories")
+	return db, func() { _ = sqlDB.Close() }
+}
+
+func buildPetRepository(db *gorm.DB) petsports.Repository {
+	if db == nil {
+		return petsmemory.NewRepository()
+	}
+	return petspostgres.NewRepository(db)
+}
+
+func buildStoreRepository(db *gorm.DB) storeports.Repository {
+	if db == nil {
+		return storememory.NewRepository()
+	}
+	return storepostgres.NewRepository(db)
+}
+
+func buildUserRepository(db *gorm.DB) userports.Repository {
+	if db == nil {
+		return usermemory.NewRepository()
+	}
+	return userpostgres.NewRepository(db)
 }
 
 func connectTemporalClient(instruments *platformobservability.Instruments) (client.Client, error) {
