@@ -28,8 +28,9 @@ go-gin-api-server/
 **Domain slices** (bounded contexts): `internal/domains/pets`, `internal/domains/store`, `internal/domains/users`. Everything else under `internal/` supports those domains (platform, integrations, workflows).
 
 ## Runtime entrypoints
-- `cmd/api/main.go`: Boots slog + OpenTelemetry, selects the pets repository (Postgres via `POSTGRES_DSN` with automigrate, otherwise in-memory), builds services, and chooses the pet workflow orchestrator (Temporal client when reachable; inline when `TEMPORAL_DISABLED=1` or dialing fails). Wires generated handlers (`go/api_*.go`) into `go/routers.go` and listens on `:$PORT` (default `8080`). Serves `/openapi.(json|yaml)` and `/swagger`.
+- `cmd/api/main.go`: Boots slog + OpenTelemetry, selects repositories (Postgres via `POSTGRES_DSN` with automigrate, otherwise in-memory), builds services, and chooses the pet workflow orchestrator (Temporal client when reachable; inline when `TEMPORAL_DISABLED=1` or dialing fails). Wires generated handlers (`go/api_*.go`) into `go/routers.go` and listens on `:$PORT` (default `8080`). Serves `/openapi.(json|yaml)` and `/swagger`. Optional session purge ticker runs when `SESSION_PURGE_INTERVAL_MINUTES` is set.
 - `cmd/worker/main.go`: Shares the same repository selection and observability setup, registers the pet creation workflow and activity bundle on queue `PET_CREATION`, and runs against the Temporal frontend (`TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`).
+- `cmd/session-purger/main.go`: One-off CLI to purge expired user sessions using `POSTGRES_DSN`; respects `SESSION_TTL_HOURS` for expiry.
 
 ## Bounded contexts
 ### Pets (`internal/domains/pets`)
@@ -42,7 +43,7 @@ go-gin-api-server/
 - Order aggregate and statuses, application service with inventory calculation, repository interface, in-memory repository, and HTTP mappers.
 
 ### Users (`internal/domains/users`)
-- User entity, application service for CRUD/login, repository interface, in-memory repository, and HTTP mappers.
+- User entity, application service for CRUD/login, repository interface, in-memory repository, HTTP mappers, Postgres repository, and Postgres session store (TTL via `SESSION_TTL_HOURS`, purge via ticker or CLI).
 
 ## Platform and shared pieces
 - `internal/platform/observability`: Slog JSON logger plus OTLP HTTP exporter (fallback to stdout), tracer/meter providers, and global propagator setup. Configured via `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_INSECURE`, and `ENVIRONMENT`.
@@ -59,11 +60,16 @@ $env:POSTGRES_DSN="postgres://user:pass@localhost:5432/pets?sslmode=disable"; go
 
 # Temporal worker (run alongside the API when using Temporal)
 $env:TEMPORAL_ADDRESS="127.0.0.1:7233"; go run ./cmd/worker
+
+# Manual session purge (cron/one-off)
+$env:POSTGRES_DSN="postgres://user:pass@localhost:5432/pets?sslmode=disable"; go run ./cmd/session-purger
 ```
 
 Environment knobs:
 - `PORT`: HTTP bind port for the API (default `8080`).
-- `POSTGRES_DSN`: Enables the Postgres-backed pets repository; falls back to memory if unset/invalid.
+- `POSTGRES_DSN`: Enables Postgres-backed repositories/session store; falls back to memory if unset/invalid.
+- `SESSION_TTL_HOURS`: TTL for user sessions (default 24h).
+- `SESSION_PURGE_INTERVAL_MINUTES`: When set, API runs a background ticker to purge expired sessions.
 - `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`: Temporal connection for API/worker; `TEMPORAL_DISABLED=1` forces inline pet creation.
 - `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_INSECURE`, `ENVIRONMENT`: Observability config.
 

@@ -8,6 +8,7 @@ go-gin-api-server/
 - cmd/
   - api/main.go              # HTTP API composition root
   - worker/main.go           # Temporal worker wiring
+  - session-purger/main.go   # One-off session purge CLI
 - go/                        # Generated Gin router + DTOs that call internal services
 - internal/                  # Domain/application code by bounded context
   - domains/                 # Domain slices (bounded contexts)
@@ -15,7 +16,7 @@ go-gin-api-server/
     - store/                 # Domain: Store/orders bounded context
     - users/                 # Domain: Users bounded context
   - clients/                 # HTTP client stubs for partner integrations
-  - durable/                 # Temporal workflows/activities/sequences
+  - platform/temporal/       # Temporal workflows/activities/sequences
   - platform/                # Shared platform concerns (OTEL, Postgres)
   - shared/                  # Cross-cutting helpers (projections)
 - Dockerfile
@@ -28,8 +29,9 @@ go-gin-api-server/
 
 ## Processes and transport
 
-- `cmd/api/main.go` boots the HTTP API: loads OTEL instruments, builds repositories, wires services into the generated handlers (`go/api_pet.go`, `go/api_store.go`, `go/api_user.go`), mounts middleware (otelgin), and listens on `:$PORT` (default `8080`). Pet creation can run inline or via Temporal if reachable.
+- `cmd/api/main.go` boots the HTTP API: loads OTEL instruments, builds repositories (Postgres when `POSTGRES_DSN` is set, otherwise memory), wires services into the generated handlers (`go/api_pet.go`, `go/api_store.go`, `go/api_user.go`), mounts middleware (otelgin), and listens on `:$PORT` (default `8080`). Pet creation can run inline or via Temporal if reachable. Optional session purge ticker when `SESSION_PURGE_INTERVAL_MINUTES` is set.
 - `cmd/worker/main.go` registers the pet creation workflow and activities with Temporal and reuses the same pets service and repository wiring.
+- `cmd/session-purger/main.go` is a one-off CLI to purge expired user sessions (Postgres only).
 - `api/openapi.yaml` is the contract used by the generator. The router in `go/routers.go` also serves `/openapi.(json|yaml)` plus `/swagger` for UI.
 - `go/` holds the generated Gin transport. Handlers delegate to application services and adapters; routes are bound in `go/routers.go`.
 
@@ -55,8 +57,9 @@ go-gin-api-server/
 ### Users (`internal/domains/users`)
 - `domain/`: User entity.
 - `application/`: User service for CRUD and login flows.
-- `ports/`: Repository interface.
-- `adapters/memory`: In-memory repository.
+- `ports/`: Repository interface and session store abstraction.
+- `adapters/memory`: In-memory repository and session store.
+- `adapters/persistence/postgres`: Postgres repository and session store (TTL via `SESSION_TTL_HOURS`, purge via ticker/CLI).
 - `adapters/http/mapper`: Maps generated DTOs to domain users.
 
 ## Cross-cutting
@@ -70,7 +73,9 @@ go-gin-api-server/
 ## Environment knobs
 
 - `PORT`: HTTP bind port for the API process.
-- `POSTGRES_DSN`: Enables the Postgres-backed pets repository when set; otherwise defaults to memory.
+- `POSTGRES_DSN`: Enables Postgres-backed repositories/session store when set; otherwise defaults to memory.
+- `SESSION_TTL_HOURS`: TTL for user sessions (default 24h).
+- `SESSION_PURGE_INTERVAL_MINUTES`: When set, API process purges expired sessions on a ticker.
 - `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`: Temporal connection for workflows and worker (defaults to local frontend plus the `default` namespace).
 - `TEMPORAL_DISABLED`: Set to `1` to force inline pet creation without Temporal.
 - `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_INSECURE`, `ENVIRONMENT`: Observability exporter and metadata used by platform instrumentation.

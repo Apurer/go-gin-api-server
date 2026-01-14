@@ -31,13 +31,13 @@ func NewRepository(db *gorm.DB) *Repository {
 // orderRecord maps the order aggregate to a relational table.
 type orderRecord struct {
 	ID        int64     `gorm:"primaryKey;column:id"`
-	PetID     int64     `gorm:"column:pet_id;index"`
+	PetID     int64     `gorm:"column:pet_id;index:idx_orders_status_pet"`
 	Quantity  int32     `gorm:"column:quantity"`
 	ShipDate  time.Time `gorm:"column:ship_date"`
-	Status    string    `gorm:"column:status;type:varchar(32);index"`
+	Status    string    `gorm:"column:status;type:varchar(32);index:idx_orders_status_pet"`
 	Complete  bool      `gorm:"column:complete"`
-	CreatedAt time.Time `gorm:"column:created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at"`
+	CreatedAt time.Time `gorm:"column:created_at;index"`
+	UpdatedAt time.Time `gorm:"column:updated_at;index"`
 }
 
 func (orderRecord) TableName() string { return "orders" }

@@ -1,0 +1,30 @@
+package main
+
+import (
+	"context"
+	"log"
+	"log/slog"
+	"os"
+	"time"
+
+	userpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/persistence/postgres"
+	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/postgres"
+)
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	db, cleanup := platformpostgres.ConnectFromEnv(ctx, logger)
+	defer cleanup()
+	if db == nil {
+		log.Fatal("POSTGRES_DSN not set or connection failed; cannot purge sessions")
+	}
+
+	store := userpostgres.NewSessionStore(db)
+	if err := store.PurgeExpired(ctx); err != nil {
+		log.Fatalf("failed to purge sessions: %v", err)
+	}
+	log.Printf("session purge completed")
+}

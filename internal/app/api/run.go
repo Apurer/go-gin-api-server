@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
@@ -69,6 +71,7 @@ func Run(ctx context.Context) error {
 	userRepo := buildUserRepository(db)
 	userSessionStore := buildUserSessionStore(db)
 	userService := userapp.NewService(userRepo, userSessionStore)
+	startSessionPurger(ctx, logger, userSessionStore)
 
 	var petWorkflows petsports.WorkflowOrchestrator = petsworkflows.NewInlinePetWorkflows(petService)
 	if temporalClient, err := connectTemporalClient(instruments); err != nil {
@@ -125,6 +128,51 @@ func buildUserSessionStore(db *gorm.DB) userports.SessionStore {
 		return usermemory.NewSessionStore()
 	}
 	return userpostgres.NewSessionStore(db)
+}
+
+type sessionPurger interface {
+	PurgeExpired(ctx context.Context) error
+}
+
+// startSessionPurger runs a background ticker to purge expired sessions when configured.
+// Controlled by SESSION_PURGE_INTERVAL_MINUTES; when unset or invalid, purging is skipped.
+func startSessionPurger(ctx context.Context, logger *slog.Logger, store userports.SessionStore) {
+	raw := strings.TrimSpace(os.Getenv("SESSION_PURGE_INTERVAL_MINUTES"))
+	if raw == "" {
+		return
+	}
+	intervalMinutes, err := strconv.Atoi(raw)
+	if err != nil || intervalMinutes <= 0 {
+		if logger != nil {
+			logger.Warn("invalid SESSION_PURGE_INTERVAL_MINUTES; skipping session purge", slog.String("value", raw))
+		}
+		return
+	}
+	purger, ok := store.(sessionPurger)
+	if !ok {
+		if logger != nil {
+			logger.Warn("session store does not support purging; skipping session purge")
+		}
+		return
+	}
+	interval := time.Duration(intervalMinutes) * time.Minute
+	ticker := time.NewTicker(interval)
+	if logger != nil {
+		logger.Info("session purge enabled", slog.Duration("interval", interval))
+	}
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := purger.PurgeExpired(context.Background()); err != nil && logger != nil {
+					logger.Warn("session purge failed", slog.String("error", err.Error()))
+				}
+			}
+		}
+	}()
 }
 
 func connectTemporalClient(instruments *platformobservability.Instruments) (client.Client, error) {

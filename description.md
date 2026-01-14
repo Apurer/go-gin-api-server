@@ -6,6 +6,7 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 - `api/openapi.yaml`: Contract used to generate the Gin router/DTOs. Served at `/openapi.yaml`, `/openapi.json`, and `/swagger`.
 - `cmd/api`: HTTP API composition root (observability, repositories, services, workflow orchestrator, router).
 - `cmd/worker`: Temporal worker composition root for pet creation workflows.
+- `cmd/session-purger`: One-off session purge CLI (Postgres only).
 - `go/`: Generated Gin transport that mounts routes and delegates to application services (`go/api_*.go`, `go/routers.go`).
 - `internal/`: Domain/application code, adapters, and platform helpers.
   - `domains`: Bounded contexts (domain, application, ports, adapters).
@@ -18,9 +19,9 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 ## Runtime entrypoints
 ### HTTP API (`cmd/api/main.go`)
 - Boots slog + OpenTelemetry via `internal/platform/observability.Init` (OTLP HTTP exporter or stdout fallback; resource attributes include `service.name` and `ENVIRONMENT`).
-- Picks the pets repository: Postgres (`POSTGRES_DSN`) with automigrations, or in-memory fallback with warnings when DSN is missing/unusable.
-- Builds the pets service with logger/tracer/meter, and selects a workflow orchestrator: Temporal client if reachable (`TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`, opt-out via `TEMPORAL_DISABLED=1`), otherwise inline execution.
-- Wires store and user services with their in-memory repositories.
+- Picks repositories: Postgres (`POSTGRES_DSN`) with automigrations, or in-memory fallback with warnings when DSN is missing/unusable.
+- Builds services with logger/tracer/meter, and selects a workflow orchestrator: Temporal client if reachable (`TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`, opt-out via `TEMPORAL_DISABLED=1`), otherwise inline execution.
+- Wires store and user services; users get Postgres-backed repo/session store when DSN is present. Optional session purge ticker runs when `SESSION_PURGE_INTERVAL_MINUTES` is set.
 - Registers generated handlers (`ApiHandleFunctions`) and adds `otelgin` middleware. Binds to `:$PORT` (default `8080`) and serves OpenAPI/Swagger assets.
 
 ### Temporal worker (`cmd/worker/main.go`)
@@ -61,9 +62,9 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 
 ## Users bounded context (`internal/domains/users`)
 - Domain: `user.go` entity.
-- Application: `service.go` covers create (single/batch), update, delete, get by username, and a simple login/logout that stores tokens in-memory.
-- Ports: Repository interface + `ErrNotFound`.
-- Adapters: `adapters/memory` repository; `adapters/http/mapper` bridges transport models.
+- Application: `service.go` covers create (single/batch), update, delete, get by username, and login/logout with session persistence.
+- Ports: Repository interface + `ErrNotFound`, and session store abstraction.
+- Adapters: `adapters/memory` repository and session store; `adapters/persistence/postgres` repository and session store (TTL via `SESSION_TTL_HOURS`, purge via ticker/CLI); `adapters/http/mapper` bridges transport models.
 
 ## Platform and shared
 - `internal/platform/observability`: Slog JSON logger, OTLP HTTP exporter (configurable via `OTEL_EXPORTER_OTLP_ENDPOINT`/`OTEL_EXPORTER_OTLP_INSECURE`), tracer/meter providers, global propagator setup, and shutdown hook.
@@ -72,7 +73,9 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 
 ## Environment reference
 - `PORT`: HTTP bind port (default `8080`).
-- `POSTGRES_DSN`: Enables Postgres-backed pets repository; missing/invalid DSN falls back to memory with warnings.
+- `POSTGRES_DSN`: Enables Postgres-backed repositories/session store; missing/invalid DSN falls back to memory with warnings.
+- `SESSION_TTL_HOURS`: TTL for user sessions (default 24h).
+- `SESSION_PURGE_INTERVAL_MINUTES`: When set, API process purges expired sessions on a ticker.
 - `TEMPORAL_ADDRESS` (default Temporal frontend), `TEMPORAL_NAMESPACE` (default `default`), `TEMPORAL_DISABLED=1` to force inline pet creation.
 - `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_INSECURE`, `ENVIRONMENT`: Observability config.
 
