@@ -25,9 +25,6 @@ const sessionTTLEnv = "SESSION_TTL_HOURS"
 // NewSessionStore wires a PostgreSQL-backed session store. Caller owns DB lifecycle.
 func NewSessionStore(db *gorm.DB) *SessionStore {
 	store := &SessionStore{db: db}
-	if db != nil {
-		_ = db.AutoMigrate(&sessionRecord{})
-	}
 	return store
 }
 

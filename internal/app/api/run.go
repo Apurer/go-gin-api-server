@@ -2,18 +2,20 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
 	temporalotel "go.temporal.io/sdk/contrib/opentelemetry"
 	workerlog "go.temporal.io/sdk/log"
+	"gorm.io/gorm"
 
 	petstoreserver "github.com/GIT_USER_ID/GIT_REPO_ID/go"
 
@@ -25,6 +27,7 @@ import (
 	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
 	storeobs "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/adapters/observability"
 	storepostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/adapters/persistence/postgres"
+	platformmigrations "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/migrations"
 	platformobservability "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/observability"
 	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/postgres"
 
@@ -37,12 +40,15 @@ import (
 	userpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/persistence/postgres"
 	userapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/application"
 	userports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/ports"
-	"gorm.io/gorm"
 )
 
 // Run boots the Petstore HTTP API with observability, repositories, and workflows wired.
 func Run(ctx context.Context) error {
 	const serviceName = "petstore-api"
+	cfg, err := LoadConfig()
+	if err != nil {
+		return err
+	}
 	instruments, shutdown, err := platformobservability.Init(ctx, serviceName)
 	if err != nil {
 		return fmt.Errorf("failed to initialize observability: %w", err)
@@ -56,8 +62,13 @@ func Run(ctx context.Context) error {
 	}()
 	logger := instruments.Logger
 
-	db, cleanupDB := platformpostgres.ConnectFromEnv(ctx, logger)
+	db, cleanupDB := connectPostgresWithConfig(ctx, logger, cfg.PostgresDSN)
 	defer cleanupDB()
+	if db != nil {
+		if err := platformmigrations.Run(db); err != nil {
+			return fmt.Errorf("run migrations: %w", err)
+		}
+	}
 
 	petRepo := buildPetRepository(db)
 	corePetService := petsapp.NewService(petRepo)
@@ -83,15 +94,19 @@ func Run(ctx context.Context) error {
 		userobs.WithTracer(instruments.Tracer("internal.users.application")),
 		userobs.WithMeter(instruments.Meter("internal.users.application")),
 	)
-	startSessionPurger(ctx, logger, userSessionStore)
+	startSessionPurger(ctx, logger, userSessionStore, cfg.SessionPurgeIntervalMinute)
 
 	var petWorkflows petsports.WorkflowOrchestrator = petsworkflows.NewInlinePetWorkflows(petService)
-	if temporalClient, err := connectTemporalClient(instruments); err != nil {
+	var temporalClient client.Client
+	if cfg.TemporalDisabled {
+		logger.Warn("Temporal disabled via config, running inline AddPet")
+	} else if c, err := connectTemporalClient(instruments, cfg); err != nil {
 		logger.Warn("Temporal workflows unavailable, running inline AddPet", slog.String("error", err.Error()))
 	} else {
+		temporalClient = c
 		defer temporalClient.Close()
 		petWorkflows = petsworkflows.NewTemporalPetWorkflows(temporalClient)
-		logger.Info("Temporal workflows enabled", slog.String("namespace", envOrDefault("TEMPORAL_NAMESPACE", client.DefaultNamespace)))
+		logger.Info("Temporal workflows enabled", slog.String("namespace", cfg.TemporalNamespace))
 	}
 
 	handlers := petstoreserver.ApiHandleFunctions{
@@ -102,10 +117,8 @@ func Run(ctx context.Context) error {
 
 	router := petstoreserver.NewRouter(handlers)
 	router.Use(otelgin.Middleware(serviceName))
-	addr := ":8080"
-	if v := os.Getenv("PORT"); v != "" {
-		addr = ":" + v
-	}
+	registerHealthRoutes(router, db, temporalClient)
+	addr := ":" + cfg.Port
 	logger.Info("Petstore API listening", slog.String("addr", addr))
 	if err := router.Run(addr); err != nil {
 		logger.Error("Petstore API server exited", slog.String("addr", addr), slog.String("error", err.Error()))
@@ -142,22 +155,42 @@ func buildUserSessionStore(db *gorm.DB) userports.SessionStore {
 	return userpostgres.NewSessionStore(db)
 }
 
+func connectPostgresWithConfig(ctx context.Context, logger *slog.Logger, dsn string) (*gorm.DB, func()) {
+	dsn = strings.TrimSpace(dsn)
+	if dsn == "" {
+		if logger != nil {
+			logger.Warn("POSTGRES_DSN not set, falling back to in-memory repositories")
+		}
+		return nil, func() {}
+	}
+	db, err := platformpostgres.Connect(ctx, dsn)
+	if err != nil {
+		if logger != nil {
+			logger.Warn("failed to connect to postgres, falling back to in-memory repositories", slog.String("error", err.Error()))
+		}
+		return nil, func() {}
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		if logger != nil {
+			logger.Warn("failed to unwrap postgres connection, falling back to in-memory repositories", slog.String("error", err.Error()))
+		}
+		return nil, func() {}
+	}
+	if logger != nil {
+		logger.Info("postgres connection established for repositories")
+	}
+	return db, func() { _ = sqlDB.Close() }
+}
+
 type sessionPurger interface {
 	PurgeExpired(ctx context.Context) error
 }
 
 // startSessionPurger runs a background ticker to purge expired sessions when configured.
-// Controlled by SESSION_PURGE_INTERVAL_MINUTES; when unset or invalid, purging is skipped.
-func startSessionPurger(ctx context.Context, logger *slog.Logger, store userports.SessionStore) {
-	raw := strings.TrimSpace(os.Getenv("SESSION_PURGE_INTERVAL_MINUTES"))
-	if raw == "" {
-		return
-	}
-	intervalMinutes, err := strconv.Atoi(raw)
-	if err != nil || intervalMinutes <= 0 {
-		if logger != nil {
-			logger.Warn("invalid SESSION_PURGE_INTERVAL_MINUTES; skipping session purge", slog.String("value", raw))
-		}
+// Controlled by an interval in minutes; when zero, purging is skipped.
+func startSessionPurger(ctx context.Context, logger *slog.Logger, store userports.SessionStore, intervalMinutes int) {
+	if intervalMinutes <= 0 {
 		return
 	}
 	purger, ok := store.(sessionPurger)
@@ -187,14 +220,58 @@ func startSessionPurger(ctx context.Context, logger *slog.Logger, store userport
 	}()
 }
 
-func connectTemporalClient(instruments *platformobservability.Instruments) (client.Client, error) {
-	if os.Getenv("TEMPORAL_DISABLED") == "1" {
-		return nil, errors.New("temporal disabled via TEMPORAL_DISABLED env")
+func registerHealthRoutes(router *gin.Engine, db *gorm.DB, temporalClient client.Client) {
+	router.GET("/healthz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	router.GET("/debug/config", func(c *gin.Context) {
+		cfg := debugConfig()
+		c.JSON(http.StatusOK, cfg)
+	})
+	router.GET("/readyz", func(c *gin.Context) {
+		dbStatus := databaseStatus(c.Request.Context(), db)
+		temporalStatus := temporalStatus(c.Request.Context(), temporalClient)
+		status := http.StatusOK
+		if strings.HasPrefix(dbStatus, "error") || strings.HasPrefix(temporalStatus, "error") {
+			status = http.StatusServiceUnavailable
+		}
+		c.JSON(status, gin.H{
+			"status":   "ok",
+			"database": dbStatus,
+			"temporal": temporalStatus,
+		})
+	})
+}
+
+func databaseStatus(ctx context.Context, db *gorm.DB) string {
+	if db == nil {
+		return "disabled"
 	}
-	address := os.Getenv("TEMPORAL_ADDRESS")
-	if address == "" {
-		address = client.DefaultHostPort
+	sqlDB, err := db.DB()
+	if err != nil {
+		return fmt.Sprintf("error: %v", err)
 	}
+	pingCtx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	if err := sqlDB.PingContext(pingCtx); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
+func temporalStatus(ctx context.Context, c client.Client) string {
+	if c == nil {
+		return "inline"
+	}
+	pingCtx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	if _, err := c.WorkflowService().GetSystemInfo(pingCtx, &workflowservice.GetSystemInfoRequest{}); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
+func connectTemporalClient(instruments *platformobservability.Instruments, cfg Config) (client.Client, error) {
 	tracerOptions := temporalotel.TracerOptions{}
 	if instruments != nil {
 		tracerOptions.Tracer = instruments.Tracer("temporal-client")
@@ -205,8 +282,8 @@ func connectTemporalClient(instruments *platformobservability.Instruments) (clie
 	}
 	logger := workerlog.NewStructuredLogger(effectiveLogger(instruments))
 	options := client.Options{
-		HostPort:  address,
-		Namespace: envOrDefault("TEMPORAL_NAMESPACE", client.DefaultNamespace),
+		HostPort:  cfg.TemporalAddress,
+		Namespace: effectiveTemporalNamespace(cfg),
 		Logger:    logger,
 	}
 	options.Interceptors = append(options.Interceptors, tracingInterceptor)
@@ -220,9 +297,22 @@ func effectiveLogger(instruments *platformobservability.Instruments) *slog.Logge
 	return slog.New(slog.NewTextHandler(os.Stdout, nil))
 }
 
-func envOrDefault(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
+func effectiveTemporalNamespace(cfg Config) string {
+	if ns := strings.TrimSpace(cfg.TemporalNamespace); ns != "" {
+		return ns
 	}
-	return fallback
+	return client.DefaultNamespace
+}
+
+// debugConfig returns a sanitized view of the runtime config for troubleshooting.
+func debugConfig() gin.H {
+	return gin.H{
+		"port":                        os.Getenv("PORT"),
+		"postgres_enabled":            strings.TrimSpace(os.Getenv("POSTGRES_DSN")) != "",
+		"temporal_disabled":           strings.TrimSpace(os.Getenv("TEMPORAL_DISABLED")) != "",
+		"temporal_address_set":        strings.TrimSpace(os.Getenv("TEMPORAL_ADDRESS")) != "",
+		"temporal_namespace":          envDefault("TEMPORAL_NAMESPACE", client.DefaultNamespace),
+		"session_ttl_hours":           envDefault("SESSION_TTL_HOURS", "24"),
+		"session_purge_interval_mins": strings.TrimSpace(os.Getenv("SESSION_PURGE_INTERVAL_MINUTES")),
+	}
 }

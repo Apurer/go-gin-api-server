@@ -22,9 +22,6 @@ type Repository struct {
 // NewRepository wires a PostgreSQL-backed repository. Caller manages DB lifecycle.
 func NewRepository(db *gorm.DB) *Repository {
 	repo := &Repository{db: db}
-	if db != nil {
-		_ = db.AutoMigrate(&orderRecord{})
-	}
 	return repo
 }
 

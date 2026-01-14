@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"log"
 	"strings"
 	"time"
 
@@ -26,11 +25,6 @@ type Repository struct {
 // NewRepository wires a PostgreSQL-backed repository. The caller owns the DB lifecycle.
 func NewRepository(db *gorm.DB) *Repository {
 	repo := &Repository{db: db}
-	if db != nil {
-		if err := db.AutoMigrate(&petRecord{}); err != nil {
-			log.Printf("postgres repository migration failed: %v", err)
-		}
-	}
 	return repo
 }
 
