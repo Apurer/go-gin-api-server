@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
+	nooptrace "go.opentelemetry.io/otel/trace/noop"
 
 	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
 	pettypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
@@ -52,7 +53,7 @@ func WithMeter(m metric.Meter) Option {
 func New(inner petsapp.Port, opts ...Option) petsapp.Port {
 	s := &Service{
 		inner:   inner,
-		tracer:  trace.NewNoopTracerProvider().Tracer(tracerName),
+		tracer:  nooptrace.NewTracerProvider().Tracer(tracerName),
 		logger:  defaultLogger(),
 		metrics: newServiceMetrics(nil),
 	}
@@ -62,7 +63,7 @@ func New(inner petsapp.Port, opts ...Option) petsapp.Port {
 		}
 	}
 	if s.tracer == nil {
-		s.tracer = trace.NewNoopTracerProvider().Tracer(tracerName)
+		s.tracer = nooptrace.NewTracerProvider().Tracer(tracerName)
 	}
 	if s.logger == nil {
 		s.logger = defaultLogger()
@@ -240,7 +241,7 @@ func (s *Service) List(ctx context.Context) ([]*pettypes.PetProjection, error) {
 func (s *Service) startSpan(ctx context.Context, name string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
 	tracer := s.tracer
 	if tracer == nil {
-		tracer = trace.NewNoopTracerProvider().Tracer(tracerName)
+		tracer = nooptrace.NewTracerProvider().Tracer(tracerName)
 	}
 	return tracer.Start(ctx, name, trace.WithAttributes(attrs...))
 }

@@ -23,6 +23,7 @@ import (
 	petsworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/workflows"
 	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
 	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
+	storeobs "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/adapters/observability"
 	storepostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/adapters/persistence/postgres"
 	platformobservability "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/observability"
 	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/postgres"
@@ -32,6 +33,7 @@ import (
 	storeports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/ports"
 
 	usermemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/memory"
+	userobs "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/observability"
 	userpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/persistence/postgres"
 	userapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/application"
 	userports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/ports"
@@ -66,11 +68,21 @@ func Run(ctx context.Context) error {
 		petsobs.WithMeter(instruments.Meter("internal.pets.application")),
 	)
 	storeRepo := buildStoreRepository(db)
-	storeService := storeapp.NewService(storeRepo)
+	storeService := storeobs.New(
+		storeapp.NewService(storeRepo),
+		storeobs.WithLogger(logger),
+		storeobs.WithTracer(instruments.Tracer("internal.store.application")),
+		storeobs.WithMeter(instruments.Meter("internal.store.application")),
+	)
 
 	userRepo := buildUserRepository(db)
 	userSessionStore := buildUserSessionStore(db)
-	userService := userapp.NewService(userRepo, userSessionStore)
+	userService := userobs.New(
+		userapp.NewService(userRepo, userSessionStore),
+		userobs.WithLogger(logger),
+		userobs.WithTracer(instruments.Tracer("internal.users.application")),
+		userobs.WithMeter(instruments.Meter("internal.users.application")),
+	)
 	startSessionPurger(ctx, logger, userSessionStore)
 
 	var petWorkflows petsports.WorkflowOrchestrator = petsworkflows.NewInlinePetWorkflows(petService)
