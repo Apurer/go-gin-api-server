@@ -5,7 +5,6 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"strings"
 	"time"
 
 	"go.temporal.io/sdk/activity"
@@ -24,6 +23,7 @@ import (
 	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/postgres"
 	petactivities "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/temporal/activities/pets"
 	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/temporal/workflows/pets"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -42,8 +42,9 @@ func main() {
 	}()
 	logger := instruments.Logger
 
-	petRepo, cleanupRepo := buildPetRepository(ctx, logger)
+	db, cleanupRepo := platformpostgres.ConnectFromEnv(ctx, logger)
 	defer cleanupRepo()
+	petRepo := buildPetRepository(db, logger)
 	corePetService := petsapp.NewService(petRepo)
 	petService := petsobs.New(
 		corePetService,
@@ -84,24 +85,13 @@ func main() {
 	logger.Info("Temporal worker stopped")
 }
 
-func buildPetRepository(ctx context.Context, logger *slog.Logger) (petsports.Repository, func()) {
-	dsn := os.Getenv("POSTGRES_DSN")
-	if strings.TrimSpace(dsn) == "" {
-		logger.Warn("POSTGRES_DSN not set, falling back to in-memory pet repository")
-		return petsmemory.NewRepository(), func() {}
-	}
-	db, err := platformpostgres.Connect(ctx, dsn)
-	if err != nil {
-		logger.Warn("worker failed to connect to postgres (falling back to memory)", slog.String("error", err.Error()))
-		return petsmemory.NewRepository(), func() {}
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		logger.Warn("worker failed to unwrap postgres connection (falling back to memory)", slog.String("error", err.Error()))
-		return petsmemory.NewRepository(), func() {}
+func buildPetRepository(db *gorm.DB, logger *slog.Logger) petsports.Repository {
+	if db == nil {
+		logger.Warn("POSTGRES_DSN not set or unavailable, falling back to in-memory pet repository")
+		return petsmemory.NewRepository()
 	}
 	logger.Info("worker pet repository configured with postgres")
-	return petspostgres.NewRepository(db), func() { _ = sqlDB.Close() }
+	return petspostgres.NewRepository(db)
 }
 
 func envOrDefault(key, fallback string) string {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
@@ -53,7 +52,7 @@ func Run(ctx context.Context) error {
 	}()
 	logger := instruments.Logger
 
-	db, cleanupDB := connectPostgres(ctx, logger)
+	db, cleanupDB := platformpostgres.ConnectFromEnv(ctx, logger)
 	defer cleanupDB()
 
 	petRepo := buildPetRepository(db)
@@ -68,7 +67,8 @@ func Run(ctx context.Context) error {
 	storeService := storeapp.NewService(storeRepo)
 
 	userRepo := buildUserRepository(db)
-	userService := userapp.NewService(userRepo, usermemory.NewSessionStore())
+	userSessionStore := buildUserSessionStore(db)
+	userService := userapp.NewService(userRepo, userSessionStore)
 
 	var petWorkflows petsports.WorkflowOrchestrator = petsworkflows.NewInlinePetWorkflows(petService)
 	if temporalClient, err := connectTemporalClient(instruments); err != nil {
@@ -99,26 +99,6 @@ func Run(ctx context.Context) error {
 	return nil
 }
 
-func connectPostgres(ctx context.Context, logger *slog.Logger) (*gorm.DB, func()) {
-	dsn := strings.TrimSpace(os.Getenv("POSTGRES_DSN"))
-	if dsn == "" {
-		logger.Warn("POSTGRES_DSN not set, falling back to in-memory repositories")
-		return nil, func() {}
-	}
-	db, err := platformpostgres.Connect(ctx, dsn)
-	if err != nil {
-		logger.Warn("failed to connect to postgres, falling back to in-memory repositories", slog.String("error", err.Error()))
-		return nil, func() {}
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		logger.Warn("failed to unwrap postgres connection, falling back to in-memory repositories", slog.String("error", err.Error()))
-		return nil, func() {}
-	}
-	logger.Info("postgres connection established for repositories")
-	return db, func() { _ = sqlDB.Close() }
-}
-
 func buildPetRepository(db *gorm.DB) petsports.Repository {
 	if db == nil {
 		return petsmemory.NewRepository()
@@ -138,6 +118,13 @@ func buildUserRepository(db *gorm.DB) userports.Repository {
 		return usermemory.NewRepository()
 	}
 	return userpostgres.NewRepository(db)
+}
+
+func buildUserSessionStore(db *gorm.DB) userports.SessionStore {
+	if db == nil {
+		return usermemory.NewSessionStore()
+	}
+	return userpostgres.NewSessionStore(db)
 }
 
 func connectTemporalClient(instruments *platformobservability.Instruments) (client.Client, error) {
