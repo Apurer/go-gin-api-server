@@ -71,6 +71,16 @@ func (a *Activities) SyncPetWithPartner(ctx context.Context, input petstypes.Pet
 		logger.Error("pet repository not configured for sync", "petId", input.ID)
 		return errors.New("pet repository not configured for sync")
 	}
+
+	var hb syncHeartbeat
+	if activity.HasHeartbeatDetails(ctx) {
+		_ = activity.GetHeartbeatDetails(ctx, &hb)
+	}
+	if hb.Completed {
+		logger.Info("SyncPetWithPartner already completed in prior attempt; skipping", "petId", input.ID)
+		return nil
+	}
+
 	logger.Info("SyncPetWithPartner activity started", "petId", input.ID)
 	projection, err := a.repo.GetByID(ctx, input.ID)
 	if err != nil {
@@ -85,6 +95,11 @@ func (a *Activities) SyncPetWithPartner(ctx context.Context, input petstypes.Pet
 		logger.Error("SyncPetWithPartner failed", "petId", input.ID, "error", err)
 		return err
 	}
+	activity.RecordHeartbeat(ctx, syncHeartbeat{Completed: true})
 	logger.Info("SyncPetWithPartner activity completed", "petId", input.ID)
 	return nil
+}
+
+type syncHeartbeat struct {
+	Completed bool
 }

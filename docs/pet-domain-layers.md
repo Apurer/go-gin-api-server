@@ -59,7 +59,7 @@ API layer (handlers)
    - Orchestrator starts `PetCreationWorkflow` with the command and trace context.
    - Workflow runs `RunPetPersistenceSequence`:
      - `PersistPet` activity: uses a service instance without partner sync to validate/build the aggregate and `repo.Save`.
-     - `SyncPetWithPartner` activity: reloads the pet and calls the partner API (idempotent PUT with `Idempotency-Key`) with a separate retry policy; skipped if no partner configured.
+     - `SyncPetWithPartner` activity: reloads the pet and calls the partner API (POST) with a separate retry policy; uses Temporal activity heartbeat to avoid re-sending after a successful attempt; skipped if no partner configured.
 5) Inline path (fallback when disabled): orchestrator directly calls `application.Service.AddPet`.
 6) Service builds domain aggregate via `buildPetFromMutation`:
    - `domain.NewPet` enforces name/non-empty photos.
@@ -68,8 +68,8 @@ API layer (handlers)
    - In prod, `adapters/persistence/postgres.Repository` upserts via GORM; arrays/JSON columns for photos/tags/external attributes; returns projection with timestamps.
    - In tests/dev, `adapters/memory.Repository` stores in-memory with metadata.
 8) Partner sync:
-   - Temporal path: separate `SyncPetWithPartner` activity reloads and syncs (skipped if no partner).
-   - Inline path: `application.Service.AddPet` calls `PartnerSync.Sync` directly.
+   - Temporal path: separate `SyncPetWithPartner` activity reloads and syncs via POST (no idempotency header); heartbeat prevents duplicate sends after success; skipped if no partner.
+   - Inline path: `application.Service.AddPet` calls `PartnerSync.Sync` directly (also POST).
 9) Observability decorator records success metrics/logs and returns the projection to the workflow/inline caller.
 10) HTTP handler maps projection → API response JSON (id, name, status, photos, tags, category, externalRef, createdAt/updatedAt).
 11) User receives 200/201 with the created pet payload.
