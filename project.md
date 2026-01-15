@@ -41,10 +41,11 @@ project.md                 # This file
 - `domain/`: Pet aggregate, value objects (category, tags, external reference), and invariants for grooming or hair length.
 - `application/`: Use-case service with OTEL metrics and tracing; command/query inputs live in `application/types/`.
 - `ports/`: Interfaces for repository and workflow orchestrator plus shared errors.
+- `ports/partner_sync.go`: Outbound port for syncing pets to an external partner.
 - `adapters/http/mapper`: Translates generated HTTP DTOs to application inputs and back.
 - `adapters/memory`: In-memory repository used by default.
 - `adapters/persistence/postgres`: GORM-backed repository with automigrations and projection mapping.
-- `adapters/external/partner`: Mapper between domain pets and a sample partner schema.
+- `adapters/external/partner`: Mapper between domain pets and a sample partner schema, plus a sync adapter that implements the outbound port using `internal/clients/http/partner`.
 - `adapters/workflows`: Workflow orchestrators (inline versus Temporal client).
 
 ### Store (`internal/domains/store`)
@@ -79,4 +80,5 @@ project.md                 # This file
 - `SESSION_PURGE_INTERVAL_MINUTES`: When set, API process purges expired sessions on a ticker.
 - `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`: Temporal connection for workflows and worker (defaults to local frontend plus the `default` namespace).
 - `TEMPORAL_DISABLED`: Set to `1` to force inline pet creation without Temporal.
+- `PARTNER_API_BASE_URL`: Enables outbound partner sync after pet mutations; leave unset to disable.
 - `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_INSECURE`, `ENVIRONMENT`: Observability exporter and metadata used by platform instrumentation.

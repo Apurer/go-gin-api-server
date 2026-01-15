@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"go.temporal.io/sdk/activity"
@@ -14,6 +15,8 @@ import (
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 
+	partnerclient "github.com/GIT_USER_ID/GIT_REPO_ID/internal/clients/http/partner"
+	petspartner "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/external/partner"
 	petsmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/memory"
 	petsobs "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/observability"
 	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/persistence/postgres"
@@ -45,7 +48,8 @@ func main() {
 	db, cleanupRepo := platformpostgres.ConnectFromEnv(ctx, logger)
 	defer cleanupRepo()
 	petRepo := buildPetRepository(db, logger)
-	corePetService := petsapp.NewService(petRepo)
+	partnerSync := buildPartnerSyncFromEnv(logger)
+	corePetService := petsapp.NewService(petRepo, petsapp.WithPartnerSync(partnerSync))
 	petService := petsobs.New(
 		corePetService,
 		petsobs.WithLogger(logger),
@@ -92,6 +96,18 @@ func buildPetRepository(db *gorm.DB, logger *slog.Logger) petsports.Repository {
 	}
 	logger.Info("worker pet repository configured with postgres")
 	return petspostgres.NewRepository(db)
+}
+
+func buildPartnerSyncFromEnv(logger *slog.Logger) petsports.PartnerSync {
+	baseURL := strings.TrimSpace(os.Getenv("PARTNER_API_BASE_URL"))
+	if baseURL == "" {
+		return nil
+	}
+	if logger != nil {
+		logger.Info("partner sync enabled", slog.String("base_url", baseURL))
+	}
+	client := partnerclient.NewClient(baseURL, nil)
+	return petspartner.NewSyncer(client)
 }
 
 func envOrDefault(key, fallback string) string {

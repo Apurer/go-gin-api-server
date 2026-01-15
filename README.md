@@ -15,7 +15,7 @@ go-gin-api-server/
     - pets/                  # Pets bounded context (domain, application, ports, adapters)
     - store/                 # Store/orders bounded context
     - users/                 # User management bounded context
-  - clients/http/partner/    # Partner sync HTTP client used by the mapper
+  - clients/http/partner/    # Partner sync HTTP client used by the mapper/sync adapter
   - platform/temporal/       # Workflows, activities, sequences for pet creation
   - platform/                # Shared platform concerns (OTEL, Postgres helpers, migrations)
   - shared/                  # Cross-cutting projection helpers
@@ -28,7 +28,7 @@ go-gin-api-server/
 **Domain slices** (bounded contexts): `internal/domains/pets`, `internal/domains/store`, `internal/domains/users`. Everything else under `internal/` supports those domains (platform, integrations, workflows).
 
 ## Runtime entrypoints
-- `cmd/api/main.go`: Boots slog + OpenTelemetry, loads config from env, selects repositories (Postgres via `POSTGRES_DSN`, otherwise in-memory), runs schema migrations (`internal/platform/migrations`), builds services, and chooses the pet workflow orchestrator (Temporal client when reachable; inline when `TEMPORAL_DISABLED=1`). Wires generated handlers (`go/api_*.go`) into `go/routers.go` and listens on `:$PORT` (default `8080`). Serves `/openapi.(json|yaml)` and `/swagger`. Health endpoints: `/healthz`, `/readyz` (checks DB + Temporal when enabled), and `/debug/config` (sanitized view). Optional session purge ticker runs when `SESSION_PURGE_INTERVAL_MINUTES` is set.
+- `cmd/api/main.go`: Boots slog + OpenTelemetry, loads config from env, selects repositories (Postgres via `POSTGRES_DSN`, otherwise in-memory), runs schema migrations (`internal/platform/migrations`), builds services (optionally wiring partner sync when `PARTNER_API_BASE_URL` is set), and chooses the pet workflow orchestrator (Temporal client when reachable; inline when `TEMPORAL_DISABLED=1`). Wires generated handlers (`go/api_*.go`) into `go/routers.go` and listens on `:$PORT` (default `8080`). Serves `/openapi.(json|yaml)` and `/swagger`. Health endpoints: `/healthz`, `/readyz` (checks DB + Temporal when enabled), and `/debug/config` (sanitized view). Optional session purge ticker runs when `SESSION_PURGE_INTERVAL_MINUTES` is set.
 - `cmd/worker/main.go`: Shares the same repository selection and observability setup, registers the pet creation workflow and activity bundle on queue `PET_CREATION`, and runs against the Temporal frontend (`TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`).
 - `cmd/session-purger/main.go`: One-off CLI to purge expired user sessions using `POSTGRES_DSN`; respects `SESSION_TTL_HOURS` for expiry.
 
@@ -37,7 +37,7 @@ go-gin-api-server/
 - `domain`: Pet aggregate with category, tags, external reference, hair length, and status invariants.
 - `application`: Use cases with tracing/metrics/logging; command/query inputs live under `application/types/` (mutations, queries, imports, grooming, media).
 - `ports`: Repository and workflow orchestrator interfaces plus shared errors.
-- `adapters`: HTTP mapper (`adapters/http/mapper`), in-memory repository (`adapters/memory`), Postgres repository with array/JSON mapping (`adapters/persistence/postgres`; schema managed via `internal/platform/migrations`), workflow orchestrators (inline vs Temporal) under `adapters/workflows`, and an external partner mapper backed by `internal/clients/http/partner`.
+- `adapters`: HTTP mapper (`adapters/http/mapper`), in-memory repository (`adapters/memory`), Postgres repository with array/JSON mapping (`adapters/persistence/postgres`; schema managed via `internal/platform/migrations`), workflow orchestrators (inline vs Temporal) under `adapters/workflows`, and an external partner adapter that maps payloads and syncs via `internal/clients/http/partner` when enabled.
 
 ### Store (`internal/domains/store`)
 - Order aggregate and statuses, application service with inventory calculation, repository interface, in-memory repository, Postgres repository (schema via `internal/platform/migrations`), and HTTP mappers.
@@ -68,6 +68,7 @@ $env:POSTGRES_DSN="postgres://user:pass@localhost:5432/pets?sslmode=disable"; go
 Environment knobs:
 - `PORT`: HTTP bind port for the API (default `8080`).
 - `POSTGRES_DSN`: Enables Postgres-backed repositories/session store; falls back to memory if unset/invalid.
+- `PARTNER_API_BASE_URL`: Enables outbound partner sync after pet mutations; leave unset to disable.
 - `SESSION_TTL_HOURS`: TTL for user sessions (default 24h).
 - `SESSION_PURGE_INTERVAL_MINUTES`: When set, API runs a background ticker to purge expired sessions.
 - `TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`: Temporal connection for API/worker; `TEMPORAL_DISABLED=1` forces inline pet creation.

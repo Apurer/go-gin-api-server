@@ -19,6 +19,8 @@ import (
 
 	petstoreserver "github.com/GIT_USER_ID/GIT_REPO_ID/go"
 
+	partnerclient "github.com/GIT_USER_ID/GIT_REPO_ID/internal/clients/http/partner"
+	petspartner "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/external/partner"
 	petsmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/memory"
 	petsobs "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/observability"
 	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/persistence/postgres"
@@ -71,7 +73,8 @@ func Run(ctx context.Context) error {
 	}
 
 	petRepo := buildPetRepository(db)
-	corePetService := petsapp.NewService(petRepo)
+	partnerSync := buildPartnerSync(cfg.PartnerAPIBaseURL, logger)
+	corePetService := petsapp.NewService(petRepo, petsapp.WithPartnerSync(partnerSync))
 	petService := petsobs.New(
 		corePetService,
 		petsobs.WithLogger(logger),
@@ -132,6 +135,18 @@ func buildPetRepository(db *gorm.DB) petsports.Repository {
 		return petsmemory.NewRepository()
 	}
 	return petspostgres.NewRepository(db)
+}
+
+func buildPartnerSync(baseURL string, logger *slog.Logger) petsports.PartnerSync {
+	baseURL = strings.TrimSpace(baseURL)
+	if baseURL == "" {
+		return nil
+	}
+	if logger != nil {
+		logger.Info("partner sync enabled", slog.String("base_url", baseURL))
+	}
+	client := partnerclient.NewClient(baseURL, nil)
+	return petspartner.NewSyncer(client)
 }
 
 func buildStoreRepository(db *gorm.DB) storeports.Repository {
@@ -311,6 +326,7 @@ func debugConfig(cfg Config) gin.H {
 		"temporal_disabled":           cfg.TemporalDisabled,
 		"temporal_address_set":        strings.TrimSpace(cfg.TemporalAddress) != "",
 		"temporal_namespace":          effectiveTemporalNamespace(cfg),
+		"partner_api_enabled":         strings.TrimSpace(cfg.PartnerAPIBaseURL) != "",
 		"session_ttl_hours":           cfg.SessionTTL.Hours(),
 		"session_purge_interval_mins": cfg.SessionPurgeIntervalMinute,
 	}

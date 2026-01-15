@@ -1,0 +1,102 @@
+openapi: 3.0.3
+info:
+  title: Partner Pet Sync API
+  version: 1.0.0
+  description: |
+    Minimal contract mirroring `internal/clients/http/partner.Client`.
+    The client POSTs `PetPayload` to `/pets/{reference}` with JSON.
+servers:
+  - url: https://partner.example.com
+paths:
+  /pets/{reference}:
+    post:
+      summary: Sync pet payload to partner
+      operationId: syncPet
+      parameters:
+        - in: path
+          name: reference
+          required: true
+          schema:
+            type: string
+          description: Partner identifier derived from the local pet ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PetPayload'
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '4XX':
+          description: Partner rejected the payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '5XX':
+          description: Partner failed to process the payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    PetPayload:
+      type: object
+      required:
+        - reference
+        - title
+        - photos
+        - availability
+      properties:
+        reference:
+          type: string
+          description: String form of the local pet ID.
+          example: "12345"
+        title:
+          type: string
+          description: Display name of the pet.
+          example: Luna
+        photos:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uri
+          description: List of photo URLs.
+        labels:
+          type: object
+          description: Tag map; values are treated as strings.
+          additionalProperties:
+            type: string
+          example:
+            friendly: "true"
+            vaccinated: "yes"
+        availability:
+          type: string
+          description: Availability status expected by the partner (upper-case in the current client).
+          example: AVAILABLE
+    SyncResponse:
+      type: object
+      description: Generic success envelope (partner specific).
+      properties:
+        status:
+          type: string
+          example: ok
+        message:
+          type: string
+          example: Pet synced
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+          example: invalid payload

@@ -11,12 +11,29 @@ import (
 
 // Service orchestrates the pets bounded context use cases.
 type Service struct {
-	repo ports.Repository
+	repo        ports.Repository
+	partnerSync ports.PartnerSync
+}
+
+// Option customizes the service wiring.
+type Option func(*Service)
+
+// WithPartnerSync attaches an outbound partner sync port used after successful mutations.
+func WithPartnerSync(sync ports.PartnerSync) Option {
+	return func(s *Service) {
+		s.partnerSync = sync
+	}
 }
 
 // NewService wires the pets service with its dependencies.
-func NewService(repo ports.Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo ports.Repository, opts ...Option) *Service {
+	svc := &Service{repo: repo}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(svc)
+		}
+	}
+	return svc
 }
 
 // AddPet persists a new pet aggregate.
@@ -25,11 +42,7 @@ func (s *Service) AddPet(ctx context.Context, input types.AddPetInput) (*types.P
 	if err != nil {
 		return nil, mapError(err)
 	}
-	saved, err := s.repo.Save(ctx, pet)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return saved, nil
+	return s.saveAndSync(ctx, pet)
 }
 
 // UpdatePet overrides an existing pet with new state.
@@ -41,11 +54,7 @@ func (s *Service) UpdatePet(ctx context.Context, input types.UpdatePetInput) (*t
 	if err := applyPartialMutation(projection.Pet, input.PetMutationInput); err != nil {
 		return nil, mapError(err)
 	}
-	saved, err := s.repo.Save(ctx, projection.Pet)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return saved, nil
+	return s.saveAndSync(ctx, projection.Pet)
 }
 
 // UpdatePetWithForm handles the simplified form flow.
@@ -61,11 +70,7 @@ func (s *Service) UpdatePetWithForm(ctx context.Context, input types.UpdatePetWi
 	if input.Status != nil && *input.Status != "" {
 		existing.UpdateStatus(domain.Status(*input.Status))
 	}
-	saved, err := s.repo.Save(ctx, existing)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return saved, nil
+	return s.saveAndSync(ctx, existing)
 }
 
 // FindByStatus searches pets matching any of the provided statuses.
@@ -120,11 +125,7 @@ func (s *Service) GroomPet(ctx context.Context, input types.GroomPetInput) (*typ
 	if err := projection.Pet.Groom(op); err != nil {
 		return nil, mapError(err)
 	}
-	saved, err := s.repo.Save(ctx, projection.Pet)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	return saved, nil
+	return s.saveAndSync(ctx, projection.Pet)
 }
 
 // UploadImage stores metadata about an uploaded asset. For demo it simply tracks message.
@@ -146,6 +147,27 @@ func (s *Service) List(ctx context.Context) ([]*types.PetProjection, error) {
 		return nil, mapError(err)
 	}
 	return result, nil
+}
+
+func (s *Service) saveAndSync(ctx context.Context, pet *domain.Pet) (*types.PetProjection, error) {
+	saved, err := s.repo.Save(ctx, pet)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	if err := s.syncWithPartner(ctx, saved); err != nil {
+		return saved, err
+	}
+	return saved, nil
+}
+
+func (s *Service) syncWithPartner(ctx context.Context, saved *types.PetProjection) error {
+	if s.partnerSync == nil || saved == nil || saved.Pet == nil {
+		return nil
+	}
+	if err := s.partnerSync.Sync(ctx, saved.Pet); err != nil {
+		return fmt.Errorf("%w: %w", ErrPartnerSync, err)
+	}
+	return nil
 }
 
 func buildPetFromMutation(input types.PetMutationInput) (*domain.Pet, error) {

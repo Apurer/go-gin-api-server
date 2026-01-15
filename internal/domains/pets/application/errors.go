@@ -7,8 +7,12 @@ import (
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
 )
 
-// ErrInvalidInput signals the request violated a domain invariant.
-var ErrInvalidInput = errors.New("invalid pet input")
+var (
+	// ErrInvalidInput signals the request violated a domain invariant.
+	ErrInvalidInput = errors.New("invalid pet input")
+	// ErrPartnerSync wraps failures pushing changes to an external partner.
+	ErrPartnerSync = errors.New("partner sync failed")
+)
 
 func mapError(err error) error {
 	if err == nil {

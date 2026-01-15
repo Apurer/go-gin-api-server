@@ -19,7 +19,7 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 ## Runtime entrypoints
 - ### HTTP API (`cmd/api/main.go`)
 - Boots slog + OpenTelemetry via `internal/platform/observability.Init` (OTLP HTTP exporter or stdout fallback; resource attributes include `service.name` and `ENVIRONMENT`).
-- Loads config from env, runs migrations when Postgres is configured, and picks repositories: Postgres (`POSTGRES_DSN`) or in-memory fallback with warnings when DSN is missing/unusable.
+- Loads config from env, runs migrations when Postgres is configured, and picks repositories: Postgres (`POSTGRES_DSN`) or in-memory fallback with warnings when DSN is missing/unusable. Optional partner sync is enabled when `PARTNER_API_BASE_URL` is set; the pets service calls the outbound port after successful mutations.
 - Builds services with logger/tracer/meter, and selects a workflow orchestrator: Temporal client if reachable (`TEMPORAL_ADDRESS`, `TEMPORAL_NAMESPACE`, opt-out via `TEMPORAL_DISABLED=1`), otherwise inline execution.
 - Wires store and user services; users get Postgres-backed repo/session store when DSN is present. Optional session purge ticker runs when `SESSION_PURGE_INTERVAL_MINUTES` is set.
 - Registers generated handlers (`ApiHandleFunctions`), adds `otelgin` middleware, and exposes `/healthz`, `/readyz` (checks DB + Temporal), and `/debug/config` (sanitized). Binds to `:$PORT` (default `8080`) and serves OpenAPI/Swagger assets.
@@ -37,17 +37,18 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 ### Domain
 - `domain/pet.go`: Pet aggregate with category, tags, external reference, hair length, and status (`available|pending|sold`). Invariants enforce non-empty name/photos, non-negative hair length, and grooming trims not exceeding the initial measurement.
 ### Application
-- `application/service.go`: Use cases with OTEL tracing/metrics and slog logging. Operations: `AddPet`, `UpdatePet`, `UpdatePetWithForm`, `GroomPet`, `UploadImage` (metadata only), `FindByStatus`, `FindByTags`, `GetByID`, `List`, `Delete`. Metrics counters track created/updated/deleted/groomed pets.
+- `application/service.go`: Use cases with OTEL tracing/metrics and slog logging. Operations: `AddPet`, `UpdatePet`, `UpdatePetWithForm`, `GroomPet`, `UploadImage` (metadata only), `FindByStatus`, `FindByTags`, `GetByID`, `List`, `Delete`. Metrics counters track created/updated/deleted/groomed pets. Supports an optional outbound partner sync port invoked after successful mutations; failures return `ErrPartnerSync` while leaving the persisted result intact.
 - `application/types`: Command/query DTOs, partner import candidate with validation, projection DTO carrying persistence metadata.
 ### Ports
 - `ports/repository.go`: CRUD + query interface returning projections (`ErrNotFound` on misses).
+- `ports/partner_sync.go`: Outbound port for pushing pets to an external partner.
 - `ports/workflows.go`: `CreatePet` orchestrator abstraction (Temporal or inline).
 ### Adapters
 - `adapters/http/mapper`: Converts generated HTTP models to mutation inputs (preserving field presence), grooming DTOs, and back to transport projections.
 - `adapters/memory`: Thread-safe in-memory repository used by default.
 - `adapters/persistence/postgres`: GORM-backed repository (schema via `internal/platform/migrations`), storing tags as arrays and external attributes as JSON; maps to domain projections.
 - `adapters/workflows`: Inline orchestrator and Temporal orchestrator that starts `pets.workflows.Creation`.
-- `adapters/external/partner`: Mapper between domain pets and partner payloads/import candidates; uses `internal/clients/http/partner` (simple JSON POST with 5s timeout).
+- `adapters/external/partner`: Mapper between domain pets and partner payloads/import candidates; includes a sync adapter implementing the outbound port and using `internal/clients/http/partner` (simple JSON POST with 5s timeout).
 
 ## Durable workflows (`internal/platform/temporal`)
 - `workflows/pets/pet_creation_workflow.go`: Workflow `pets.workflows.Creation` on queue `PET_CREATION`; wraps the pet persistence sequence.
@@ -74,6 +75,7 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 ## Environment reference
 - `PORT`: HTTP bind port (default `8080`).
 - `POSTGRES_DSN`: Enables Postgres-backed repositories/session store; missing/invalid DSN falls back to memory with warnings.
+- `PARTNER_API_BASE_URL`: Enables outbound partner sync after pet mutations; leave unset to disable.
 - `SESSION_TTL_HOURS`: TTL for user sessions (default 24h).
 - `SESSION_PURGE_INTERVAL_MINUTES`: When set, API process purges expired sessions on a ticker.
 - `TEMPORAL_ADDRESS` (default Temporal frontend), `TEMPORAL_NAMESPACE` (default `default`), `TEMPORAL_DISABLED=1` to force inline pet creation.

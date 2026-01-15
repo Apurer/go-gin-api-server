@@ -19,6 +19,7 @@ type Config struct {
 	TemporalAddress            string
 	TemporalNamespace          string
 	TemporalDisabled           bool
+	PartnerAPIBaseURL          string
 	SessionPurgeIntervalMinute int
 	SessionTTL                 time.Duration
 }
@@ -31,6 +32,7 @@ func LoadConfig() (Config, error) {
 		TemporalAddress:   envDefault("TEMPORAL_ADDRESS", client.DefaultHostPort),
 		TemporalNamespace: envDefault("TEMPORAL_NAMESPACE", client.DefaultNamespace),
 		TemporalDisabled:  isTruthy(os.Getenv("TEMPORAL_DISABLED")),
+		PartnerAPIBaseURL: strings.TrimSpace(os.Getenv("PARTNER_API_BASE_URL")),
 		SessionTTL:        time.Duration(defaultSessionTTLHours) * time.Hour,
 	}
 	if raw := strings.TrimSpace(os.Getenv("SESSION_PURGE_INTERVAL_MINUTES")); raw != "" {
