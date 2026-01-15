@@ -8,8 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	userhttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/http/mapper"
-	userdomain "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/domain"
+	userapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/application"
 	userports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/ports"
+	apierrors "github.com/GIT_USER_ID/GIT_REPO_ID/internal/shared/errors"
 )
 
 // UserAPI implements the user OpenAPI section.
@@ -69,7 +70,7 @@ func fromTransportUsers(users []userhttpmapper.User) []User {
 func (api *UserAPI) CreateUser(c *gin.Context) {
 	var payload User
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	user, err := userhttpmapper.ToDomainUser(toTransportUser(payload))
@@ -90,7 +91,7 @@ func (api *UserAPI) CreateUser(c *gin.Context) {
 func (api *UserAPI) CreateUsersWithArrayInput(c *gin.Context) {
 	var payload []User
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	users, err := userhttpmapper.ToDomainUsers(toTransportUserList(payload))
@@ -111,7 +112,7 @@ func (api *UserAPI) CreateUsersWithArrayInput(c *gin.Context) {
 func (api *UserAPI) CreateUsersWithListInput(c *gin.Context) {
 	var payload []User
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	users, err := userhttpmapper.ToDomainUsers(toTransportUserList(payload))
@@ -132,7 +133,7 @@ func (api *UserAPI) CreateUsersWithListInput(c *gin.Context) {
 func (api *UserAPI) DeleteUser(c *gin.Context) {
 	username := c.Param("username")
 	if strings.TrimSpace(username) == "" {
-		respondError(c, http.StatusBadRequest, errors.New("username is required"))
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail("username is required"))
 		return
 	}
 	if err := api.service.Delete(c.Request.Context(), username); err != nil {
@@ -161,7 +162,7 @@ func (api *UserAPI) LoginUser(c *gin.Context) {
 	password := c.Query("password")
 	token, err := api.service.Login(c.Request.Context(), username, password)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondUserError(c, err)
 		return
 	}
 	c.Header("Set-Cookie", "api_key="+token)
@@ -184,7 +185,7 @@ func (api *UserAPI) UpdateUser(c *gin.Context) {
 	username := c.Param("username")
 	var payload User
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	user, err := userhttpmapper.ToDomainUser(toTransportUser(payload))
@@ -204,17 +205,14 @@ func respondUserError(c *gin.Context, err error) {
 	if err == nil {
 		return
 	}
-	if err == userports.ErrNotFound {
-		respondError(c, http.StatusNotFound, err)
-		return
+	switch {
+	case errors.Is(err, userports.ErrNotFound):
+		respondProblem(c, apierrors.ErrNotFound.WithDetail(err.Error()))
+	case errors.Is(err, userapp.ErrAuthentication):
+		respondProblem(c, apierrors.ErrUnauthorized.WithDetail(err.Error()))
+	case errors.Is(err, userapp.ErrInvalidInput):
+		respondProblem(c, apierrors.ErrValidation.WithDetail(err.Error()))
+	default:
+		respondProblem(c, apierrors.ErrInternal.WithDetail(err.Error()))
 	}
-	if errors.Is(err, userports.ErrInvalidCredentials) ||
-		errors.Is(err, userdomain.ErrEmptyUsername) ||
-		errors.Is(err, userdomain.ErrEmptyPassword) ||
-		errors.Is(err, userdomain.ErrWeakPassword) ||
-		errors.Is(err, userdomain.ErrInvalidEmail) {
-		respondError(c, http.StatusBadRequest, err)
-		return
-	}
-	respondError(c, http.StatusInternalServerError, err)
 }

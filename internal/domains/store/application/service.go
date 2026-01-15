@@ -22,10 +22,10 @@ func (s *Service) PlaceOrder(ctx context.Context, order *domain.Order) (*domain.
 		return nil, errors.New("order is nil")
 	}
 	if err := order.UpdateStatus(order.Status); err != nil {
-		return nil, err
+		return nil, mapError(err)
 	}
 	if err := order.Validate(); err != nil {
-		return nil, err
+		return nil, mapError(err)
 	}
 	return s.repo.Save(ctx, order)
 }

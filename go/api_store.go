@@ -16,8 +16,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	storehttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/adapters/http/mapper"
-	storedomain "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/domain"
+	storeapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/application"
 	storeports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/ports"
+	apierrors "github.com/GIT_USER_ID/GIT_REPO_ID/internal/shared/errors"
 )
 
 // StoreAPI implements the store/order OpenAPI operations.
@@ -97,12 +98,12 @@ func (api *StoreAPI) GetOrderById(c *gin.Context) {
 func (api *StoreAPI) PlaceOrder(c *gin.Context) {
 	var payload Order
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	order, err := storehttpmapper.ToDomainOrder(toTransportOrder(payload))
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	saved, err := api.service.PlaceOrder(c.Request.Context(), order)
@@ -117,15 +118,12 @@ func respondStoreError(c *gin.Context, err error) {
 	if err == nil {
 		return
 	}
-	if err == storeports.ErrNotFound {
-		respondError(c, http.StatusNotFound, err)
-		return
+	switch {
+	case errors.Is(err, storeports.ErrNotFound):
+		respondProblem(c, apierrors.ErrNotFound.WithDetail(err.Error()))
+	case errors.Is(err, storeapp.ErrInvalidInput):
+		respondProblem(c, apierrors.ErrValidation.WithDetail(err.Error()))
+	default:
+		respondProblem(c, apierrors.ErrInternal.WithDetail(err.Error()))
 	}
-	if errors.Is(err, storedomain.ErrInvalidPetID) ||
-		errors.Is(err, storedomain.ErrInvalidQuantity) ||
-		errors.Is(err, storedomain.ErrInvalidStatus) {
-		respondError(c, http.StatusBadRequest, err)
-		return
-	}
-	respondError(c, http.StatusInternalServerError, err)
 }

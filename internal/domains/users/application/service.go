@@ -29,7 +29,7 @@ func (s *Service) CreateUser(ctx context.Context, user *domain.User) (*domain.Us
 		return nil, errors.New("user is nil")
 	}
 	if err := user.Validate(); err != nil {
-		return nil, err
+		return nil, mapError(err)
 	}
 	return s.repo.Save(ctx, user)
 }
@@ -41,7 +41,7 @@ func (s *Service) CreateUsers(ctx context.Context, users []*domain.User) ([]*dom
 			return nil, errors.New("user is nil")
 		}
 		if err := u.Validate(); err != nil {
-			return nil, err
+			return nil, mapError(err)
 		}
 		persisted, err := s.repo.Save(ctx, u)
 		if err != nil {
@@ -71,10 +71,10 @@ func (s *Service) Update(ctx context.Context, username string, updated *domain.U
 	}
 	updated.ID = existing.ID
 	if err := updated.SetUsername(username); err != nil {
-		return nil, err
+		return nil, mapError(err)
 	}
 	if err := updated.Validate(); err != nil {
-		return nil, err
+		return nil, mapError(err)
 	}
 	return s.repo.Save(ctx, updated)
 }
@@ -82,14 +82,14 @@ func (s *Service) Update(ctx context.Context, username string, updated *domain.U
 func (s *Service) Login(ctx context.Context, username, password string) (string, error) {
 	username = strings.TrimSpace(username)
 	if username == "" || strings.TrimSpace(password) == "" {
-		return "", ports.ErrInvalidCredentials
+		return "", mapError(ports.ErrInvalidCredentials)
 	}
 	user, err := s.repo.GetByUsername(ctx, username)
 	if err != nil {
 		return "", err
 	}
 	if !user.CheckPassword(password) {
-		return "", ports.ErrInvalidCredentials
+		return "", mapError(ports.ErrInvalidCredentials)
 	}
 	token := fmt.Sprintf("%s:%d", username, time.Now().UnixNano())
 	if err := s.sessions.Save(ctx, username, token); err != nil {
