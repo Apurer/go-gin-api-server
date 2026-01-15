@@ -44,11 +44,13 @@ func (c *Client) SyncPet(ctx context.Context, payload PetPayload) error {
 		return fmt.Errorf("serialize partner payload: %w", err)
 	}
 	endpoint := fmt.Sprintf("%s/pets/%s", c.BaseURL, payload.Reference)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	// Use PUT to keep the call idempotent on retries (upsert semantics expected on partner side).
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("build partner request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Idempotency-Key", payload.Reference)
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("call partner API: %w", err)

@@ -29,7 +29,8 @@ API layer (handlers)
 ```
 
 ### Typical request flow
-- Inbound: HTTP handler → `mapper.ToMutationInput` → observability decorator → `application.Service` → domain mutations → repository port → chosen adapter (Postgres in prod, memory in tests).
+- Inbound (create): HTTP handler → `mapper.ToMutationInput` → observability decorator → **workflow orchestrator** (Temporal by default, inline when `TEMPORAL_DISABLED=true`) → Temporal `PersistPet` activity (persist only) → Temporal `SyncPetWithPartner` activity → return projection.
+- Inbound (other ops): HTTP handler → mapper → observability decorator → `application.Service` → repo/partner sync as needed.
 - Mutations may also invoke `PartnerSync.Sync` and/or `WorkflowOrchestrator.CreatePet` depending on wiring.
 - Reads: repository port returns projections wrapping domain aggregates (`application/types/projections.go`).
 
@@ -53,17 +54,25 @@ API layer (handlers)
 ### End-to-end create flow (happy path)
 1) User sends `POST /pet` with JSON body (id, name, photos, optional tags/status/category/externalRef).
 2) HTTP handler maps JSON → `mapper.MutationPet` → `mapper.ToMutationInput` producing `application/types.AddPetInput`.
-3) Observability decorator starts span/logs/metrics, then calls `application.Service.AddPet`.
-4) Service builds domain aggregate via `buildPetFromMutation`:
+3) Observability decorator starts span/logs/metrics, then calls `WorkflowOrchestrator.CreatePet`.
+4) Temporal path (default unless `TEMPORAL_DISABLED=true`):
+   - Orchestrator starts `PetCreationWorkflow` with the command and trace context.
+   - Workflow runs `RunPetPersistenceSequence`:
+     - `PersistPet` activity: uses a service instance without partner sync to validate/build the aggregate and `repo.Save`.
+     - `SyncPetWithPartner` activity: reloads the pet and calls the partner API (idempotent PUT with `Idempotency-Key`) with a separate retry policy; skipped if no partner configured.
+5) Inline path (fallback when disabled): orchestrator directly calls `application.Service.AddPet`.
+6) Service builds domain aggregate via `buildPetFromMutation`:
    - `domain.NewPet` enforces name/non-empty photos.
    - Applies status/category/tags/hair/externalRef with validation/normalization.
-5) Service calls `repo.Save` (ports.Repository):
+7) Service calls `repo.Save` (ports.Repository):
    - In prod, `adapters/persistence/postgres.Repository` upserts via GORM; arrays/JSON columns for photos/tags/external attributes; returns projection with timestamps.
    - In tests/dev, `adapters/memory.Repository` stores in-memory with metadata.
-6) Service triggers partner sync if configured (`ports.PartnerSync` → e.g., HTTP client in `adapters/external/partner`).
-7) Observability decorator records success metrics/logs and returns the projection.
-8) HTTP handler maps projection → API response JSON (id, name, status, photos, tags, category, externalRef, createdAt/updatedAt).
-9) User receives 200/201 with the created pet payload.
+8) Partner sync:
+   - Temporal path: separate `SyncPetWithPartner` activity reloads and syncs (skipped if no partner).
+   - Inline path: `application.Service.AddPet` calls `PartnerSync.Sync` directly.
+9) Observability decorator records success metrics/logs and returns the projection to the workflow/inline caller.
+10) HTTP handler maps projection → API response JSON (id, name, status, photos, tags, category, externalRef, createdAt/updatedAt).
+11) User receives 200/201 with the created pet payload.
 
 Error variants:
 - Domain validation (empty name/photos, invalid status/hair/grooming) → mapped to `ErrInvalidInput` → 400-level response.

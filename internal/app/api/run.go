@@ -99,13 +99,16 @@ func Run(ctx context.Context) error {
 	)
 	startSessionPurger(ctx, logger, userSessionStore, cfg.SessionPurgeIntervalMinute)
 
-	var petWorkflows petsports.WorkflowOrchestrator = petsworkflows.NewInlinePetWorkflows(petService)
+	var petWorkflows petsports.WorkflowOrchestrator
 	var temporalClient client.Client
 	if cfg.TemporalDisabled {
 		logger.Warn("Temporal disabled via config, running inline AddPet")
-	} else if c, err := connectTemporalClient(instruments, cfg); err != nil {
-		logger.Warn("Temporal workflows unavailable, running inline AddPet", slog.String("error", err.Error()))
+		petWorkflows = petsworkflows.NewInlinePetWorkflows(petService)
 	} else {
+		c, err := connectTemporalClient(instruments, cfg)
+		if err != nil {
+			return fmt.Errorf("connect temporal client: %w", err)
+		}
 		temporalClient = c
 		defer temporalClient.Close()
 		petWorkflows = petsworkflows.NewTemporalPetWorkflows(temporalClient)

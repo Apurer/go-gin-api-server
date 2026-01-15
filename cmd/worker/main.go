@@ -49,14 +49,14 @@ func main() {
 	defer cleanupRepo()
 	petRepo := buildPetRepository(db, logger)
 	partnerSync := buildPartnerSyncFromEnv(logger)
-	corePetService := petsapp.NewService(petRepo, petsapp.WithPartnerSync(partnerSync))
-	petService := petsobs.New(
-		corePetService,
+	// Persistence-only service (no partner sync) to avoid duplicate outbound calls inside activities.
+	persistPetService := petsobs.New(
+		petsapp.NewService(petRepo),
 		petsobs.WithLogger(logger),
 		petsobs.WithTracer(instruments.Tracer("internal.pets.application")),
 		petsobs.WithMeter(instruments.Meter("internal.pets.application")),
 	)
-	petActivities := petactivities.NewActivities(petService)
+	petActivities := petactivities.NewActivities(persistPetService, petRepo, partnerSync)
 
 	tracerOptions := temporalotel.TracerOptions{Tracer: instruments.Tracer("temporal-worker")}
 	tracingInterceptor, err := temporalotel.NewTracingInterceptor(tracerOptions)
@@ -79,7 +79,8 @@ func main() {
 
 	w := worker.New(temporalClient, petworkflows.PetCreationTaskQueue, worker.Options{})
 	w.RegisterWorkflowWithOptions(petworkflows.PetCreationWorkflow, workflow.RegisterOptions{Name: petworkflows.PetCreationWorkflowName})
-	w.RegisterActivityWithOptions(petActivities.CreatePet, activity.RegisterOptions{Name: petactivities.CreatePetActivityName})
+	w.RegisterActivityWithOptions(petActivities.PersistPet, activity.RegisterOptions{Name: petactivities.PersistPetActivityName})
+	w.RegisterActivityWithOptions(petActivities.SyncPetWithPartner, activity.RegisterOptions{Name: petactivities.SyncPetWithPartnerActivityName})
 
 	logger.Info("worker listening", slog.String("taskQueue", petworkflows.PetCreationTaskQueue), slog.String("namespace", clientOptions.Namespace))
 	if err := w.Run(worker.InterruptCh()); err != nil {
