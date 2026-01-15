@@ -6,8 +6,8 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
-	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
 	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
+	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
 )
 
 const (
@@ -17,11 +17,11 @@ const (
 
 // Activities groups activities that operate on the pets bounded context.
 type Activities struct {
-	service petsapp.Port
+	service petsports.Service
 }
 
 // NewActivities wires the pets service into the Temporal activities bundle.
-func NewActivities(service petsapp.Port) *Activities {
+func NewActivities(service petsports.Service) *Activities {
 	return &Activities{service: service}
 }
 

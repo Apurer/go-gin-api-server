@@ -11,16 +11,16 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	nooptrace "go.opentelemetry.io/otel/trace/noop"
 
-	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
 	pettypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
+	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
 )
 
 const tracerName = "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/observability/service"
 
 // Service decorates a pets application port with tracing, logging, and metrics.
 type Service struct {
-	inner   petsapp.Port
+	inner   ports.Service
 	tracer  trace.Tracer
 	logger  *slog.Logger
 	metrics serviceMetrics
@@ -50,7 +50,7 @@ func WithMeter(m metric.Meter) Option {
 }
 
 // New wires a decorator around the core service.
-func New(inner petsapp.Port, opts ...Option) petsapp.Port {
+func New(inner ports.Service, opts ...Option) ports.Service {
 	s := &Service{
 		inner:   inner,
 		tracer:  nooptrace.NewTracerProvider().Tracer(tracerName),
@@ -205,7 +205,7 @@ func (s *Service) GroomPet(ctx context.Context, input pettypes.GroomPetInput) (*
 }
 
 // UploadImage stores metadata about an uploaded asset.
-func (s *Service) UploadImage(ctx context.Context, input pettypes.UploadImageInput) (*petsapp.UploadImageResult, error) {
+func (s *Service) UploadImage(ctx context.Context, input pettypes.UploadImageInput) (*ports.UploadImageResult, error) {
 	ctx, span := s.startSpan(ctx, "Service.UploadImage",
 		attribute.Int64("pet.id", input.ID),
 		attribute.String("asset.filename", input.Filename),
@@ -325,4 +325,4 @@ func addCounter(ctx context.Context, counter metric.Int64Counter, value int64, a
 	counter.Add(ctx, value, metric.WithAttributes(attrs...))
 }
 
-var _ petsapp.Port = (*Service)(nil)
+var _ ports.Service = (*Service)(nil)

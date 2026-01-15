@@ -87,7 +87,7 @@ func Run(ctx context.Context) error {
 	)
 
 	userRepo := buildUserRepository(db)
-	userSessionStore := buildUserSessionStore(db)
+	userSessionStore := buildUserSessionStore(db, cfg.SessionTTL)
 	userService := userobs.New(
 		userapp.NewService(userRepo, userSessionStore),
 		userobs.WithLogger(logger),
@@ -117,7 +117,7 @@ func Run(ctx context.Context) error {
 
 	router := petstoreserver.NewRouter(handlers)
 	router.Use(otelgin.Middleware(serviceName))
-	registerHealthRoutes(router, db, temporalClient)
+	registerHealthRoutes(router, cfg, db, temporalClient)
 	addr := ":" + cfg.Port
 	logger.Info("Petstore API listening", slog.String("addr", addr))
 	if err := router.Run(addr); err != nil {
@@ -148,11 +148,11 @@ func buildUserRepository(db *gorm.DB) userports.Repository {
 	return userpostgres.NewRepository(db)
 }
 
-func buildUserSessionStore(db *gorm.DB) userports.SessionStore {
+func buildUserSessionStore(db *gorm.DB, sessionTTL time.Duration) userports.SessionStore {
 	if db == nil {
 		return usermemory.NewSessionStore()
 	}
-	return userpostgres.NewSessionStore(db)
+	return userpostgres.NewSessionStore(db, sessionTTL)
 }
 
 func connectPostgresWithConfig(ctx context.Context, logger *slog.Logger, dsn string) (*gorm.DB, func()) {
@@ -220,13 +220,12 @@ func startSessionPurger(ctx context.Context, logger *slog.Logger, store userport
 	}()
 }
 
-func registerHealthRoutes(router *gin.Engine, db *gorm.DB, temporalClient client.Client) {
+func registerHealthRoutes(router *gin.Engine, cfg Config, db *gorm.DB, temporalClient client.Client) {
 	router.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 	router.GET("/debug/config", func(c *gin.Context) {
-		cfg := debugConfig()
-		c.JSON(http.StatusOK, cfg)
+		c.JSON(http.StatusOK, debugConfig(cfg))
 	})
 	router.GET("/readyz", func(c *gin.Context) {
 		dbStatus := databaseStatus(c.Request.Context(), db)
@@ -305,14 +304,14 @@ func effectiveTemporalNamespace(cfg Config) string {
 }
 
 // debugConfig returns a sanitized view of the runtime config for troubleshooting.
-func debugConfig() gin.H {
+func debugConfig(cfg Config) gin.H {
 	return gin.H{
-		"port":                        os.Getenv("PORT"),
-		"postgres_enabled":            strings.TrimSpace(os.Getenv("POSTGRES_DSN")) != "",
-		"temporal_disabled":           strings.TrimSpace(os.Getenv("TEMPORAL_DISABLED")) != "",
-		"temporal_address_set":        strings.TrimSpace(os.Getenv("TEMPORAL_ADDRESS")) != "",
-		"temporal_namespace":          envDefault("TEMPORAL_NAMESPACE", client.DefaultNamespace),
-		"session_ttl_hours":           envDefault("SESSION_TTL_HOURS", "24"),
-		"session_purge_interval_mins": strings.TrimSpace(os.Getenv("SESSION_PURGE_INTERVAL_MINUTES")),
+		"port":                        cfg.Port,
+		"postgres_enabled":            strings.TrimSpace(cfg.PostgresDSN) != "",
+		"temporal_disabled":           cfg.TemporalDisabled,
+		"temporal_address_set":        strings.TrimSpace(cfg.TemporalAddress) != "",
+		"temporal_namespace":          effectiveTemporalNamespace(cfg),
+		"session_ttl_hours":           cfg.SessionTTL.Hours(),
+		"session_purge_interval_mins": cfg.SessionPurgeIntervalMinute,
 	}
 }

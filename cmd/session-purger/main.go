@@ -5,6 +5,8 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	userpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/persistence/postgres"
@@ -22,9 +24,21 @@ func main() {
 		log.Fatal("POSTGRES_DSN not set or connection failed; cannot purge sessions")
 	}
 
-	store := userpostgres.NewSessionStore(db)
+	store := userpostgres.NewSessionStore(db, sessionTTLFromEnv())
 	if err := store.PurgeExpired(ctx); err != nil {
 		log.Fatalf("failed to purge sessions: %v", err)
 	}
 	log.Printf("session purge completed")
+}
+
+func sessionTTLFromEnv() time.Duration {
+	raw := strings.TrimSpace(os.Getenv("SESSION_TTL_HOURS"))
+	if raw == "" {
+		return userpostgres.DefaultSessionTTL
+	}
+	hours, err := strconv.Atoi(raw)
+	if err != nil || hours <= 0 {
+		return userpostgres.DefaultSessionTTL
+	}
+	return time.Duration(hours) * time.Hour
 }

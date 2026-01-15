@@ -16,12 +16,12 @@ import (
 
 // PetAPI wires HTTP transport with the pets bounded context service and workflows.
 type PetAPI struct {
-	service   petsapp.Port
+	service   petsports.Service
 	workflows petsports.WorkflowOrchestrator
 }
 
 // NewPetAPI creates a PetAPI backed by the provided service.
-func NewPetAPI(service petsapp.Port, workflows petsports.WorkflowOrchestrator) PetAPI {
+func NewPetAPI(service petsports.Service, workflows petsports.WorkflowOrchestrator) PetAPI {
 	return PetAPI{service: service, workflows: workflows}
 }
 

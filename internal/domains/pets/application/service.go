@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
+	types "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
 )
@@ -129,15 +129,8 @@ func (s *Service) GroomPet(ctx context.Context, input types.GroomPetInput) (*typ
 	return types.FromDomainProjection(saved), nil
 }
 
-// UploadImageResult describes the metadata returned by the upload flow.
-type UploadImageResult struct {
-	Code    int32
-	Type    string
-	Message string
-}
-
 // UploadImage stores metadata about an uploaded asset. For demo it simply tracks message.
-func (s *Service) UploadImage(ctx context.Context, input types.UploadImageInput) (*UploadImageResult, error) {
+func (s *Service) UploadImage(ctx context.Context, input types.UploadImageInput) (*ports.UploadImageResult, error) {
 	if _, err := s.repo.GetByID(ctx, input.ID); err != nil {
 		return nil, mapError(err)
 	}
@@ -145,7 +138,7 @@ func (s *Service) UploadImage(ctx context.Context, input types.UploadImageInput)
 	if input.Metadata != "" {
 		msg = fmt.Sprintf("%s (%s)", msg, input.Metadata)
 	}
-	return &UploadImageResult{Code: 200, Type: "upload", Message: msg}, nil
+	return &ports.UploadImageResult{Code: 200, Type: "upload", Message: msg}, nil
 }
 
 // List exposes all pets for inventory calculations or admin use cases.
@@ -244,4 +237,4 @@ func cloneAttributes(attrs map[string]string) map[string]string {
 	return copy
 }
 
-var _ Port = (*Service)(nil)
+var _ ports.Service = (*Service)(nil)

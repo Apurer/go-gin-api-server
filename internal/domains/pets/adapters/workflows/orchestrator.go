@@ -9,7 +9,6 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.temporal.io/sdk/client"
 
-	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
 	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
 	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/temporal/workflows/pets"
@@ -59,11 +58,11 @@ func (o *TemporalPetWorkflows) CreatePet(ctx context.Context, input petstypes.Ad
 
 // InlinePetWorkflows executes the service directly without Temporal, useful for tests or dev fallbacks.
 type InlinePetWorkflows struct {
-	service petsapp.Port
+	service ports.Service
 }
 
 // NewInlinePetWorkflows wraps the pets service for synchronous execution.
-func NewInlinePetWorkflows(service petsapp.Port) *InlinePetWorkflows {
+func NewInlinePetWorkflows(service ports.Service) *InlinePetWorkflows {
 	return &InlinePetWorkflows{service: service}
 }
 

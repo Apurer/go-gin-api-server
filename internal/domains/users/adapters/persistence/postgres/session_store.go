@@ -3,8 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,15 +14,19 @@ import (
 
 // SessionStore persists user sessions in PostgreSQL.
 type SessionStore struct {
-	db *gorm.DB
+	db       *gorm.DB
+	sessionT time.Duration
 }
 
-const defaultSessionTTL = 24 * time.Hour
-const sessionTTLEnv = "SESSION_TTL_HOURS"
+// DefaultSessionTTL provides the fallback TTL when none is configured.
+const DefaultSessionTTL = 24 * time.Hour
 
 // NewSessionStore wires a PostgreSQL-backed session store. Caller owns DB lifecycle.
-func NewSessionStore(db *gorm.DB) *SessionStore {
-	store := &SessionStore{db: db}
+func NewSessionStore(db *gorm.DB, sessionTTL time.Duration) *SessionStore {
+	if sessionTTL <= 0 {
+		sessionTTL = DefaultSessionTTL
+	}
+	store := &SessionStore{db: db, sessionT: sessionTTL}
 	return store
 }
 
@@ -48,7 +50,7 @@ func (s *SessionStore) Save(ctx context.Context, username, token string) error {
 	if username == "" || token == "" {
 		return errors.New("username and token are required")
 	}
-	expiry := time.Now().Add(sessionTTLFromEnv())
+	expiry := time.Now().Add(s.sessionT)
 	rec := sessionRecord{Username: username, Token: token, ExpiresAt: &expiry}
 	return s.db.WithContext(ctx).
 		Clauses(clause.OnConflict{
@@ -84,15 +86,6 @@ func (s *SessionStore) ensureDB() error {
 		return errors.New("postgres session store not configured")
 	}
 	return nil
-}
-
-func sessionTTLFromEnv() time.Duration {
-	if raw := strings.TrimSpace(os.Getenv(sessionTTLEnv)); raw != "" {
-		if hours, err := strconv.Atoi(raw); err == nil && hours > 0 {
-			return time.Duration(hours) * time.Hour
-		}
-	}
-	return defaultSessionTTL
 }
 
 var _ userports.SessionStore = (*SessionStore)(nil)
