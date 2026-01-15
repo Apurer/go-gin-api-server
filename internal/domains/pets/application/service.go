@@ -64,11 +64,15 @@ func (s *Service) UpdatePetWithForm(ctx context.Context, input types.UpdatePetWi
 		return nil, mapError(err)
 	}
 	existing := projection.Pet
-	if input.Name != nil && *input.Name != "" {
-		_ = existing.Rename(*input.Name)
+	if input.Name != nil {
+		if err := existing.Rename(*input.Name); err != nil {
+			return nil, mapError(err)
+		}
 	}
-	if input.Status != nil && *input.Status != "" {
-		existing.UpdateStatus(domain.Status(*input.Status))
+	if input.Status != nil {
+		if err := existing.UpdateStatus(domain.Status(*input.Status)); err != nil {
+			return nil, mapError(err)
+		}
 	}
 	return s.saveAndSync(ctx, existing)
 }
@@ -183,9 +187,13 @@ func buildPetFromMutation(input types.PetMutationInput) (*domain.Pet, error) {
 		return nil, err
 	}
 	if input.Status != nil {
-		pet.UpdateStatus(domain.Status(*input.Status))
+		if err := pet.UpdateStatus(domain.Status(*input.Status)); err != nil {
+			return nil, err
+		}
 	} else {
-		pet.UpdateStatus("")
+		if err := pet.UpdateStatus(""); err != nil {
+			return nil, err
+		}
 	}
 	partial := input
 	partial.Name = nil
@@ -209,12 +217,8 @@ func applyPartialMutation(target *domain.Pet, input types.PetMutationInput) erro
 		}
 	}
 	if input.Category != nil {
-		if input.Category.ID == 0 && input.Category.Name == "" {
-			target.UpdateCategory(nil)
-		} else {
-			cat := domain.Category{ID: input.Category.ID, Name: input.Category.Name}
-			target.UpdateCategory(&cat)
-		}
+		cat := domain.Category{ID: input.Category.ID, Name: input.Category.Name}
+		target.UpdateCategory(&cat)
 	}
 	if input.Tags != nil {
 		tags := make([]domain.Tag, 0, len(*input.Tags))
@@ -224,7 +228,9 @@ func applyPartialMutation(target *domain.Pet, input types.PetMutationInput) erro
 		target.ReplaceTags(tags)
 	}
 	if input.Status != nil {
-		target.UpdateStatus(domain.Status(*input.Status))
+		if err := target.UpdateStatus(domain.Status(*input.Status)); err != nil {
+			return err
+		}
 	}
 	if input.HairLengthCm != nil {
 		if err := target.UpdateHairLength(*input.HairLengthCm); err != nil {

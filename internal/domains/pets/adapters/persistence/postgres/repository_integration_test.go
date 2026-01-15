@@ -77,11 +77,19 @@ func TestPostgresRepository_SaveAndGetByID(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a pet
-	pet, err := domain.NewPet(1, "Buddy", []string{"http://example.com/buddy.jpg"})
+	pet, err := domain.NewPet(1, "Buddy", []string{"http://example.com/buddy.jpg", "http://example.com/buddy2.jpg"})
 	require.NoError(t, err)
-	pet.UpdateStatus(domain.StatusAvailable)
+	require.NoError(t, pet.UpdateStatus(domain.StatusAvailable))
 	pet.UpdateCategory(&domain.Category{ID: 1, Name: "Dogs"})
 	pet.ReplaceTags([]domain.Tag{{ID: 1, Name: "friendly"}, {ID: 2, Name: "trained"}})
+	pet.UpdateExternalReference(&domain.ExternalReference{
+		Provider: "partner",
+		ID:       "ext-123",
+		Attributes: map[string]string{
+			"color": "brown",
+			"size":  "medium",
+		},
+	})
 
 	// Save
 	projection, err := repo.Save(ctx, pet)
@@ -98,6 +106,11 @@ func TestPostgresRepository_SaveAndGetByID(t *testing.T) {
 	assert.Equal(t, domain.StatusAvailable, retrieved.Pet.Status)
 	assert.Equal(t, "Dogs", retrieved.Pet.Category.Name)
 	assert.Len(t, retrieved.Pet.Tags, 2)
+	assert.ElementsMatch(t, []string{"http://example.com/buddy.jpg", "http://example.com/buddy2.jpg"}, retrieved.Pet.PhotoURLs)
+	require.NotNil(t, retrieved.Pet.ExternalRef)
+	assert.Equal(t, "partner", retrieved.Pet.ExternalRef.Provider)
+	assert.Equal(t, "ext-123", retrieved.Pet.ExternalRef.ID)
+	assert.Equal(t, "brown", retrieved.Pet.ExternalRef.Attributes["color"])
 }
 
 func TestPostgresRepository_FindByStatus(t *testing.T) {
@@ -126,7 +139,7 @@ func TestPostgresRepository_FindByStatus(t *testing.T) {
 	for _, p := range pets {
 		pet, err := domain.NewPet(p.id, p.name, []string{"http://example.com/photo.jpg"})
 		require.NoError(t, err)
-		pet.UpdateStatus(p.status)
+		require.NoError(t, pet.UpdateStatus(p.status))
 		_, err = repo.Save(ctx, pet)
 		require.NoError(t, err)
 	}
@@ -156,7 +169,7 @@ func TestPostgresRepository_FindByTags(t *testing.T) {
 	// Create pets with tags
 	pet1, err := domain.NewPet(1, "Friendly Dog", []string{"http://example.com/dog.jpg"})
 	require.NoError(t, err)
-	pet1.ReplaceTags([]domain.Tag{{ID: 1, Name: "friendly"}, {ID: 2, Name: "trained"}})
+	pet1.ReplaceTags([]domain.Tag{{ID: 1, Name: "Friendly"}, {ID: 2, Name: "TRAINED"}})
 	_, err = repo.Save(ctx, pet1)
 	require.NoError(t, err)
 
@@ -167,7 +180,7 @@ func TestPostgresRepository_FindByTags(t *testing.T) {
 	require.NoError(t, err)
 
 	// Find by tag
-	result, err := repo.FindByTags(ctx, []string{"friendly"})
+	result, err := repo.FindByTags(ctx, []string{"FRIENDLY"})
 	require.NoError(t, err)
 	assert.Len(t, result, 1)
 	assert.Equal(t, "Friendly Dog", result[0].Pet.Name)
@@ -242,7 +255,7 @@ func TestPostgresRepository_Update(t *testing.T) {
 	// Create and save
 	pet, err := domain.NewPet(1, "Original Name", []string{"http://example.com/photo.jpg"})
 	require.NoError(t, err)
-	pet.UpdateStatus(domain.StatusAvailable)
+	require.NoError(t, pet.UpdateStatus(domain.StatusAvailable))
 	saved, err := repo.Save(ctx, pet)
 	require.NoError(t, err)
 	originalCreatedAt := saved.Metadata.CreatedAt
@@ -253,7 +266,7 @@ func TestPostgresRepository_Update(t *testing.T) {
 	// Update
 	err = pet.Rename("Updated Name")
 	require.NoError(t, err)
-	pet.UpdateStatus(domain.StatusPending)
+	require.NoError(t, pet.UpdateStatus(domain.StatusPending))
 	updated, err := repo.Save(ctx, pet)
 	require.NoError(t, err)
 

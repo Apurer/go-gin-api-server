@@ -79,7 +79,9 @@ func ToDomainPet(input Pet) (*domain.Pet, error) {
 		tags = append(tags, domain.Tag{ID: t.ID, Name: t.Name})
 	}
 	pet.ReplaceTags(tags)
-	pet.UpdateStatus(domain.Status(input.Status))
+	if err := pet.UpdateStatus(domain.Status(input.Status)); err != nil {
+		return nil, err
+	}
 	if input.HairLengthCm != nil {
 		if err := pet.UpdateHairLength(*input.HairLengthCm); err != nil {
 			return nil, err

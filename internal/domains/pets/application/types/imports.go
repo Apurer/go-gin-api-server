@@ -51,7 +51,9 @@ func (c PartnerImportCandidate) ToDomainPet() (*domain.Pet, error) {
 		return nil, err
 	}
 	if c.Availability != "" {
-		pet.UpdateStatus(domain.Status(strings.ToLower(c.Availability)))
+		if err := pet.UpdateStatus(domain.Status(strings.ToLower(c.Availability))); err != nil {
+			return nil, err
+		}
 	}
 	if c.ExternalReference != nil {
 		ref := domain.ExternalReference{

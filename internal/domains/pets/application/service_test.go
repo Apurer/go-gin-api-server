@@ -11,6 +11,7 @@ import (
 	petmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/memory"
 	pettypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
+	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
 )
 
 func TestAddPet_Success(t *testing.T) {
@@ -127,4 +128,160 @@ func (s *stubPartnerSync) Sync(_ context.Context, pet *domain.Pet) error {
 		s.lastID = pet.ID
 	}
 	return s.err
+}
+
+func TestUpdatePetWithForm_PropagatesValidation(t *testing.T) {
+	repo := petmemory.NewRepository()
+	svc := NewService(repo)
+
+	name := "Rex"
+	photos := []string{"http://example.com/rex.jpg"}
+	proj, err := svc.AddPet(context.Background(), pettypes.AddPetInput{
+		PetMutationInput: pettypes.PetMutationInput{
+			ID:        10,
+			Name:      &name,
+			PhotoURLs: &photos,
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, proj)
+
+	invalidName := "   "
+	_, err = svc.UpdatePetWithForm(context.Background(), pettypes.UpdatePetWithFormInput{
+		ID:   proj.Pet.ID,
+		Name: &invalidName,
+	})
+	require.ErrorIs(t, err, ErrInvalidInput)
+}
+
+func TestUpdatePetWithForm_UpdatesStatusAndName(t *testing.T) {
+	repo := petmemory.NewRepository()
+	svc := NewService(repo)
+
+	name := "Luna"
+	photos := []string{"http://example.com/luna.jpg"}
+	created, err := svc.AddPet(context.Background(), pettypes.AddPetInput{
+		PetMutationInput: pettypes.PetMutationInput{
+			ID:        11,
+			Name:      &name,
+			PhotoURLs: &photos,
+		},
+	})
+	require.NoError(t, err)
+
+	updatedName := "Luna II"
+	status := "pending"
+	updated, err := svc.UpdatePetWithForm(context.Background(), pettypes.UpdatePetWithFormInput{
+		ID:     created.Pet.ID,
+		Name:   &updatedName,
+		Status: &status,
+	})
+	require.NoError(t, err)
+	require.Equal(t, updatedName, updated.Pet.Name)
+	require.Equal(t, domain.StatusPending, updated.Pet.Status)
+}
+
+func TestGroomPet_InvalidOperation(t *testing.T) {
+	repo := petmemory.NewRepository()
+	svc := NewService(repo)
+
+	name := "Milo"
+	photos := []string{"http://example.com/milo.jpg"}
+	proj, err := svc.AddPet(context.Background(), pettypes.AddPetInput{
+		PetMutationInput: pettypes.PetMutationInput{
+			ID:        12,
+			Name:      &name,
+			PhotoURLs: &photos,
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.GroomPet(context.Background(), pettypes.GroomPetInput{
+		ID:                  proj.Pet.ID,
+		InitialHairLengthCm: 2,
+		TrimByCm:            3,
+	})
+	require.ErrorIs(t, err, ErrInvalidInput)
+}
+
+func TestFindByStatus_DefaultsToAvailable(t *testing.T) {
+	repo := petmemory.NewRepository()
+	svc := NewService(repo)
+
+	name := "Buddy"
+	photos := []string{"http://example.com/buddy.jpg"}
+	_, err := svc.AddPet(context.Background(), pettypes.AddPetInput{
+		PetMutationInput: pettypes.PetMutationInput{
+			ID:        13,
+			Name:      &name,
+			PhotoURLs: &photos,
+		},
+	})
+	require.NoError(t, err)
+
+	otherName := "Shadow"
+	_, err = svc.AddPet(context.Background(), pettypes.AddPetInput{
+		PetMutationInput: pettypes.PetMutationInput{
+			ID:        14,
+			Name:      &otherName,
+			PhotoURLs: &photos,
+			Status: func() *string {
+				val := string(domain.StatusPending)
+				return &val
+			}(),
+		},
+	})
+	require.NoError(t, err)
+
+	result, err := svc.FindByStatus(context.Background(), pettypes.FindPetsByStatusInput{})
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	require.Equal(t, int64(13), result[0].Pet.ID)
+	require.Equal(t, domain.StatusAvailable, result[0].Pet.Status)
+}
+
+func TestFindByTags_CaseInsensitive(t *testing.T) {
+	repo := petmemory.NewRepository()
+	svc := NewService(repo)
+
+	name := "Casey"
+	photos := []string{"http://example.com/casey.jpg"}
+	tags := []pettypes.TagInput{{Name: "Playful"}}
+	_, err := svc.AddPet(context.Background(), pettypes.AddPetInput{
+		PetMutationInput: pettypes.PetMutationInput{
+			ID:        15,
+			Name:      &name,
+			PhotoURLs: &photos,
+			Tags:      &tags,
+		},
+	})
+	require.NoError(t, err)
+
+	result, err := svc.FindByTags(context.Background(), pettypes.FindPetsByTagsInput{Tags: []string{"playful"}})
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	require.Equal(t, int64(15), result[0].Pet.ID)
+}
+
+func TestDelete_Flows(t *testing.T) {
+	repo := petmemory.NewRepository()
+	svc := NewService(repo)
+
+	name := "Temp"
+	photos := []string{"http://example.com/temp.jpg"}
+	created, err := svc.AddPet(context.Background(), pettypes.AddPetInput{
+		PetMutationInput: pettypes.PetMutationInput{
+			ID:        16,
+			Name:      &name,
+			PhotoURLs: &photos,
+		},
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, svc.Delete(context.Background(), pettypes.PetIdentifier{ID: created.Pet.ID}))
+	_, err = svc.GetByID(context.Background(), pettypes.PetIdentifier{ID: created.Pet.ID})
+	require.ErrorIs(t, err, ports.ErrNotFound)
+
+	err = svc.Delete(context.Background(), pettypes.PetIdentifier{ID: 999})
+	require.ErrorIs(t, err, ports.ErrNotFound)
 }

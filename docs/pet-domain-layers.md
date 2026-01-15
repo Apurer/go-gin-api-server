@@ -1,0 +1,71 @@
+# Pet Domain Abstraction Layers
+
+Text-only map of how the pets bounded context is structured and wired.
+
+```text
+API layer (handlers) 
+  -> HTTP mapper (internal/domains/pets/adapters/http/mapper)
+  -> Observability decorator (internal/domains/pets/adapters/observability)
+  -> Application service (internal/domains/pets/application/service.go)
+        - orchestrates use cases
+        - maps domain errors to application errors
+        - triggers partner sync
+        - delegates persistence via ports.Repository
+        - optional workflow delegation via ports.WorkflowOrchestrator
+  -> Domain model (internal/domains/pets/domain/pet.go)
+        - Pet aggregate + invariants (name/photos/status/hair/tags/category/external ref)
+        - value objects and helpers
+  -> Outbound ports (internal/domains/pets/ports)
+        - Repository (persistence)
+        - PartnerSync (external system)
+        - WorkflowOrchestrator (durable orchestration)
+        - Service (inbound API surface)
+  -> Adapters (internal/domains/pets/adapters)
+        - persistence/postgres: GORM/PostgreSQL with projections
+        - persistence/memory: in-memory repo for tests/dev
+        - workflows: Temporal client or inline
+        - external/partner: HTTP client wrapper
+        - observability: tracing/logging/metrics decorator
+```
+
+### Typical request flow
+- Inbound: HTTP handler → `mapper.ToMutationInput` → observability decorator → `application.Service` → domain mutations → repository port → chosen adapter (Postgres in prod, memory in tests).
+- Mutations may also invoke `PartnerSync.Sync` and/or `WorkflowOrchestrator.CreatePet` depending on wiring.
+- Reads: repository port returns projections wrapping domain aggregates (`application/types/projections.go`).
+
+### Key abstractions by layer
+- Domain: `domain.Pet` + invariants, normalization for status/tags/category (`internal/domains/pets/domain/pet.go`).
+- Application: use cases and error mapping (`internal/domains/pets/application/service.go`, `errors.go`); command/query DTOs live in `internal/domains/pets/application/types`.
+- Ports: inbound (`ports.Service`) and outbound (`ports.Repository`, `ports.PartnerSync`, `ports.WorkflowOrchestrator`) in `internal/domains/pets/ports`.
+- Adapters:
+  - Persistence: `adapters/persistence/postgres` (GORM, arrays/JSON), `adapters/memory` (tests/dev).
+  - Observability: `adapters/observability` decorator.
+  - Workflows: `adapters/workflows` (Temporal or inline).
+  - External partner client: `adapters/external/partner`.
+  - HTTP mapping: `adapters/http/mapper`.
+- Platform plumbing: PostgreSQL connection helper (`internal/platform/postgres`), migrations (`internal/platform/migrations`), Temporal workflow definitions (`internal/platform/temporal/workflows/pets`).
+
+### Testing hooks
+- Unit/service coverage: `internal/domains/pets/application/service_test.go`.
+- Integration (DB): `internal/domains/pets/adapters/persistence/postgres/repository_integration_test.go` (arrays/JSON, tag search).
+- In-memory repo and inline workflows simplify isolated tests.
+
+### End-to-end create flow (happy path)
+1) User sends `POST /pet` with JSON body (id, name, photos, optional tags/status/category/externalRef).
+2) HTTP handler maps JSON → `mapper.MutationPet` → `mapper.ToMutationInput` producing `application/types.AddPetInput`.
+3) Observability decorator starts span/logs/metrics, then calls `application.Service.AddPet`.
+4) Service builds domain aggregate via `buildPetFromMutation`:
+   - `domain.NewPet` enforces name/non-empty photos.
+   - Applies status/category/tags/hair/externalRef with validation/normalization.
+5) Service calls `repo.Save` (ports.Repository):
+   - In prod, `adapters/persistence/postgres.Repository` upserts via GORM; arrays/JSON columns for photos/tags/external attributes; returns projection with timestamps.
+   - In tests/dev, `adapters/memory.Repository` stores in-memory with metadata.
+6) Service triggers partner sync if configured (`ports.PartnerSync` → e.g., HTTP client in `adapters/external/partner`).
+7) Observability decorator records success metrics/logs and returns the projection.
+8) HTTP handler maps projection → API response JSON (id, name, status, photos, tags, category, externalRef, createdAt/updatedAt).
+9) User receives 200/201 with the created pet payload.
+
+Error variants:
+- Domain validation (empty name/photos, invalid status/hair/grooming) → mapped to `ErrInvalidInput` → 400-level response.
+- Repo not found (during updates) → `ports.ErrNotFound` → 404.
+- Partner sync failure after save → response includes saved pet; sync error surfaces (e.g., 502) while persistence is kept.

@@ -21,7 +21,8 @@ func mapError(err error) error {
 	if errors.Is(err, domain.ErrEmptyName) ||
 		errors.Is(err, domain.ErrEmptyPhotos) ||
 		errors.Is(err, domain.ErrInvalidHair) ||
-		errors.Is(err, domain.ErrInvalidGrooming) {
+		errors.Is(err, domain.ErrInvalidGrooming) ||
+		errors.Is(err, domain.ErrInvalidStatus) {
 		return fmt.Errorf("%w: %w", ErrInvalidInput, err)
 	}
 	return err

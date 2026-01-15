@@ -56,6 +56,7 @@ var (
 	ErrEmptyPhotos     = errors.New("at least one photo url is required")
 	ErrInvalidHair     = errors.New("hair length must be greater or equal to zero")
 	ErrInvalidGrooming = errors.New("grooming operation must have a trim less than or equal to the initial length")
+	ErrInvalidStatus   = errors.New("pet status is invalid")
 )
 
 // NewPet validates the invariants and builds a new Pet aggregate.
@@ -109,21 +110,41 @@ func (p *Pet) Groom(op GroomingOperation) error {
 }
 
 // UpdateStatus validates known lifecycle values.
-func (p *Pet) UpdateStatus(status Status) {
+func (p *Pet) UpdateStatus(status Status) error {
 	if status == "" {
-		status = StatusAvailable
+		p.Status = StatusAvailable
+		return nil
 	}
 	switch status {
 	case StatusAvailable, StatusPending, StatusSold:
 		p.Status = status
+		return nil
 	default:
-		p.Status = StatusAvailable
+		return ErrInvalidStatus
 	}
 }
 
 // ReplaceTags swaps the current tag set.
 func (p *Pet) ReplaceTags(tags []Tag) {
-	p.Tags = append([]Tag{}, tags...)
+	if len(tags) == 0 {
+		p.Tags = nil
+		return
+	}
+
+	seen := map[string]struct{}{}
+	normalized := make([]Tag, 0, len(tags))
+	for _, t := range tags {
+		name := strings.ToLower(strings.TrimSpace(t.Name))
+		tag := Tag{ID: t.ID, Name: name}
+		if name != "" {
+			if _, exists := seen[name]; exists {
+				continue
+			}
+			seen[name] = struct{}{}
+		}
+		normalized = append(normalized, tag)
+	}
+	p.Tags = normalized
 }
 
 // UpdateCategory sets a new category pointer.
@@ -132,7 +153,13 @@ func (p *Pet) UpdateCategory(cat *Category) {
 		p.Category = nil
 		return
 	}
+	name := strings.TrimSpace(cat.Name)
+	if cat.ID == 0 && name == "" {
+		p.Category = nil
+		return
+	}
 	copy := *cat
+	copy.Name = name
 	p.Category = &copy
 }
 
