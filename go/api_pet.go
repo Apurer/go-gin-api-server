@@ -12,6 +12,7 @@ import (
 	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
 	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
 	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
+	apierrors "github.com/GIT_USER_ID/GIT_REPO_ID/internal/shared/errors"
 )
 
 // PetAPI wires HTTP transport with the pets bounded context service and workflows.
@@ -30,7 +31,7 @@ func NewPetAPI(service petsports.Service, workflows petsports.WorkflowOrchestrat
 func (api *PetAPI) AddPet(c *gin.Context) {
 	var payload pethttpmapper.MutationPet
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	input := petstypes.AddPetInput{PetMutationInput: pethttpmapper.ToMutationInput(payload)}
@@ -108,7 +109,7 @@ func (api *PetAPI) GetPetById(c *gin.Context) {
 func (api *PetAPI) UpdatePet(c *gin.Context) {
 	var payload pethttpmapper.MutationPet
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	input := petstypes.UpdatePetInput{PetMutationInput: pethttpmapper.ToMutationInput(payload)}
@@ -155,12 +156,12 @@ func (api *PetAPI) GroomPet(c *gin.Context) {
 	}
 	var payload pethttpmapper.GroomingOperation
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	input, err := pethttpmapper.ToGroomPetInput(id, payload)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	updated, err := api.service.GroomPet(c.Request.Context(), input)
@@ -180,7 +181,7 @@ func (api *PetAPI) UploadFile(c *gin.Context) {
 	}
 	file, err := c.FormFile("file")
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return
 	}
 	metadata := c.PostForm("additionalMetadata")
@@ -198,14 +199,10 @@ func parseIDParam(c *gin.Context, name string) (int64, bool) {
 	value := c.Param(name)
 	id, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrBadRequest.WithDetail(err.Error()))
 		return 0, false
 	}
 	return id, true
-}
-
-func respondError(c *gin.Context, status int, err error) {
-	c.JSON(status, gin.H{"error": err.Error()})
 }
 
 func respondPetServiceError(c *gin.Context, err error) {
@@ -213,12 +210,12 @@ func respondPetServiceError(c *gin.Context, err error) {
 		return
 	}
 	if err == petsports.ErrNotFound {
-		respondError(c, http.StatusNotFound, err)
+		respondProblem(c, apierrors.ErrNotFound.WithDetail(err.Error()))
 		return
 	}
 	if errors.Is(err, petsapp.ErrInvalidInput) {
-		respondError(c, http.StatusBadRequest, err)
+		respondProblem(c, apierrors.ErrValidation.WithDetail(err.Error()))
 		return
 	}
-	respondError(c, http.StatusInternalServerError, err)
+	respondProblem(c, apierrors.ErrInternal.WithDetail(err.Error()))
 }

@@ -10,9 +10,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	pettypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/shared/projection"
 )
 
 var _ ports.Repository = (*Repository)(nil)
@@ -75,7 +75,7 @@ func newPetRecord(p *domain.Pet) petRecord {
 }
 
 // Save inserts or updates a pet aggregate.
-func (r *Repository) Save(ctx context.Context, pet *domain.Pet) (*projection.Projection[*domain.Pet], error) {
+func (r *Repository) Save(ctx context.Context, pet *domain.Pet) (*pettypes.PetProjection, error) {
 	if err := r.ensureDB(); err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (r *Repository) Save(ctx context.Context, pet *domain.Pet) (*projection.Pro
 }
 
 // GetByID fetches a pet by identifier.
-func (r *Repository) GetByID(ctx context.Context, id int64) (*projection.Projection[*domain.Pet], error) {
+func (r *Repository) GetByID(ctx context.Context, id int64) (*pettypes.PetProjection, error) {
 	if err := r.ensureDB(); err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (r *Repository) Delete(ctx context.Context, id int64) error {
 }
 
 // FindByStatus returns pets matching any provided status.
-func (r *Repository) FindByStatus(ctx context.Context, statuses []domain.Status) ([]*projection.Projection[*domain.Pet], error) {
+func (r *Repository) FindByStatus(ctx context.Context, statuses []domain.Status) ([]*pettypes.PetProjection, error) {
 	if err := r.ensureDB(); err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (r *Repository) FindByStatus(ctx context.Context, statuses []domain.Status)
 }
 
 // FindByTags returns pets that contain any of the provided tag names (case insensitive).
-func (r *Repository) FindByTags(ctx context.Context, tags []string) ([]*projection.Projection[*domain.Pet], error) {
+func (r *Repository) FindByTags(ctx context.Context, tags []string) ([]*pettypes.PetProjection, error) {
 	if err := r.ensureDB(); err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (r *Repository) FindByTags(ctx context.Context, tags []string) ([]*projecti
 }
 
 // List returns every persisted pet.
-func (r *Repository) List(ctx context.Context) ([]*projection.Projection[*domain.Pet], error) {
+func (r *Repository) List(ctx context.Context) ([]*pettypes.PetProjection, error) {
 	if err := r.ensureDB(); err != nil {
 		return nil, err
 	}
@@ -190,8 +190,8 @@ func (r *Repository) List(ctx context.Context) ([]*projection.Projection[*domain
 	return recordsToProjections(records)
 }
 
-func recordsToProjections(records []petRecord) ([]*projection.Projection[*domain.Pet], error) {
-	list := make([]*projection.Projection[*domain.Pet], 0, len(records))
+func recordsToProjections(records []petRecord) ([]*pettypes.PetProjection, error) {
+	list := make([]*pettypes.PetProjection, 0, len(records))
 	for i := range records {
 		projection, err := toProjection(&records[i])
 		if err != nil {
@@ -202,15 +202,12 @@ func recordsToProjections(records []petRecord) ([]*projection.Projection[*domain
 	return list, nil
 }
 
-func toProjection(record *petRecord) (*projection.Projection[*domain.Pet], error) {
+func toProjection(record *petRecord) (*pettypes.PetProjection, error) {
 	if record == nil {
 		return nil, nil
 	}
 	pet := record.toDomain()
-	return &projection.Projection[*domain.Pet]{
-		Entity:   pet,
-		Metadata: projection.Metadata{CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt},
-	}, nil
+	return pettypes.NewPetProjection(pet, record.CreatedAt, record.UpdatedAt), nil
 }
 
 func (r *petRecord) toDomain() *domain.Pet {

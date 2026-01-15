@@ -29,7 +29,7 @@ func (s *Service) AddPet(ctx context.Context, input types.AddPetInput) (*types.P
 	if err != nil {
 		return nil, mapError(err)
 	}
-	return types.FromDomainProjection(saved), nil
+	return saved, nil
 }
 
 // UpdatePet overrides an existing pet with new state.
@@ -38,14 +38,14 @@ func (s *Service) UpdatePet(ctx context.Context, input types.UpdatePetInput) (*t
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := applyPartialMutation(projection.Entity, input.PetMutationInput); err != nil {
+	if err := applyPartialMutation(projection.Pet, input.PetMutationInput); err != nil {
 		return nil, mapError(err)
 	}
-	saved, err := s.repo.Save(ctx, projection.Entity)
+	saved, err := s.repo.Save(ctx, projection.Pet)
 	if err != nil {
 		return nil, mapError(err)
 	}
-	return types.FromDomainProjection(saved), nil
+	return saved, nil
 }
 
 // UpdatePetWithForm handles the simplified form flow.
@@ -54,7 +54,7 @@ func (s *Service) UpdatePetWithForm(ctx context.Context, input types.UpdatePetWi
 	if err != nil {
 		return nil, mapError(err)
 	}
-	existing := projection.Entity
+	existing := projection.Pet
 	if input.Name != nil && *input.Name != "" {
 		_ = existing.Rename(*input.Name)
 	}
@@ -65,7 +65,7 @@ func (s *Service) UpdatePetWithForm(ctx context.Context, input types.UpdatePetWi
 	if err != nil {
 		return nil, mapError(err)
 	}
-	return types.FromDomainProjection(saved), nil
+	return saved, nil
 }
 
 // FindByStatus searches pets matching any of the provided statuses.
@@ -81,8 +81,7 @@ func (s *Service) FindByStatus(ctx context.Context, input types.FindPetsByStatus
 	if err != nil {
 		return nil, mapError(err)
 	}
-	projections := types.FromDomainProjectionList(result)
-	return projections, nil
+	return result, nil
 }
 
 // FindByTags searches pets matching any supplied tag name.
@@ -91,8 +90,7 @@ func (s *Service) FindByTags(ctx context.Context, input types.FindPetsByTagsInpu
 	if err != nil {
 		return nil, mapError(err)
 	}
-	projections := types.FromDomainProjectionList(result)
-	return projections, nil
+	return result, nil
 }
 
 // GetByID loads a single pet aggregate.
@@ -101,7 +99,7 @@ func (s *Service) GetByID(ctx context.Context, input types.PetIdentifier) (*type
 	if err != nil {
 		return nil, mapError(err)
 	}
-	return types.FromDomainProjection(projection), nil
+	return projection, nil
 }
 
 // Delete removes a pet.
@@ -119,14 +117,14 @@ func (s *Service) GroomPet(ctx context.Context, input types.GroomPetInput) (*typ
 		return nil, mapError(err)
 	}
 	op := domain.GroomingOperation{InitialLengthCm: input.InitialHairLengthCm, TrimByCm: input.TrimByCm}
-	if err := projection.Entity.Groom(op); err != nil {
+	if err := projection.Pet.Groom(op); err != nil {
 		return nil, mapError(err)
 	}
-	saved, err := s.repo.Save(ctx, projection.Entity)
+	saved, err := s.repo.Save(ctx, projection.Pet)
 	if err != nil {
 		return nil, mapError(err)
 	}
-	return types.FromDomainProjection(saved), nil
+	return saved, nil
 }
 
 // UploadImage stores metadata about an uploaded asset. For demo it simply tracks message.
@@ -147,8 +145,7 @@ func (s *Service) List(ctx context.Context) ([]*types.PetProjection, error) {
 	if err != nil {
 		return nil, mapError(err)
 	}
-	projections := types.FromDomainProjectionList(result)
-	return projections, nil
+	return result, nil
 }
 
 func buildPetFromMutation(input types.PetMutationInput) (*domain.Pet, error) {

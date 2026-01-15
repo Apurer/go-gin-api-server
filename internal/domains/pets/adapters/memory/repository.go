@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/shared/projection"
 )
 
 var _ ports.Repository = (*Repository)(nil)
@@ -22,8 +22,9 @@ type Repository struct {
 }
 
 type storedPet struct {
-	pet      *domain.Pet
-	metadata projection.Metadata
+	pet     *domain.Pet
+	created time.Time
+	updated time.Time
 }
 
 // NewRepository constructs an empty in-memory store.
@@ -34,8 +35,15 @@ func NewRepository() *Repository {
 	}
 }
 
+// WithClock overrides the time source for deterministic testing.
+func (r *Repository) WithClock(now func() time.Time) {
+	if now != nil {
+		r.now = now
+	}
+}
+
 // Save inserts or replaces a pet while maintaining metadata.
-func (r *Repository) Save(_ context.Context, pet *domain.Pet) (*projection.Projection[*domain.Pet], error) {
+func (r *Repository) Save(_ context.Context, pet *domain.Pet) (*types.PetProjection, error) {
 	if pet == nil {
 		return nil, errors.New("cannot save nil pet")
 	}
@@ -45,21 +53,23 @@ func (r *Repository) Save(_ context.Context, pet *domain.Pet) (*projection.Proje
 
 	entry, ok := r.pets[pet.ID]
 	timestamp := r.now()
-	metadata := projection.Metadata{CreatedAt: timestamp, UpdatedAt: timestamp}
+	createdAt := timestamp
+	updatedAt := timestamp
 	if ok {
-		metadata.CreatedAt = entry.metadata.CreatedAt
+		createdAt = entry.created
 	}
 
 	stored := &storedPet{
-		pet:      clonePet(pet),
-		metadata: metadata,
+		pet:     clonePet(pet),
+		created: createdAt,
+		updated: updatedAt,
 	}
 	r.pets[pet.ID] = stored
 	return projectionCopy(stored), nil
 }
 
 // GetByID fetches a pet if present.
-func (r *Repository) GetByID(_ context.Context, id int64) (*projection.Projection[*domain.Pet], error) {
+func (r *Repository) GetByID(_ context.Context, id int64) (*types.PetProjection, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	entry, ok := r.pets[id]
@@ -81,14 +91,14 @@ func (r *Repository) Delete(_ context.Context, id int64) error {
 }
 
 // FindByStatus returns pets with matching status.
-func (r *Repository) FindByStatus(_ context.Context, statuses []domain.Status) ([]*projection.Projection[*domain.Pet], error) {
+func (r *Repository) FindByStatus(_ context.Context, statuses []domain.Status) ([]*types.PetProjection, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	set := map[domain.Status]struct{}{}
 	for _, s := range statuses {
 		set[s] = struct{}{}
 	}
-	var list []*projection.Projection[*domain.Pet]
+	var list []*types.PetProjection
 	for _, entry := range r.pets {
 		if _, ok := set[entry.pet.Status]; ok {
 			list = append(list, projectionCopy(entry))
@@ -98,7 +108,7 @@ func (r *Repository) FindByStatus(_ context.Context, statuses []domain.Status) (
 }
 
 // FindByTags returns pets with overlapping tags.
-func (r *Repository) FindByTags(_ context.Context, tags []string) ([]*projection.Projection[*domain.Pet], error) {
+func (r *Repository) FindByTags(_ context.Context, tags []string) ([]*types.PetProjection, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if len(tags) == 0 {
@@ -108,7 +118,7 @@ func (r *Repository) FindByTags(_ context.Context, tags []string) ([]*projection
 	for _, t := range tags {
 		lookup[strings.ToLower(t)] = struct{}{}
 	}
-	var list []*projection.Projection[*domain.Pet]
+	var list []*types.PetProjection
 	for _, entry := range r.pets {
 		for _, tag := range entry.pet.Tags {
 			if _, ok := lookup[strings.ToLower(tag.Name)]; ok {
@@ -121,21 +131,18 @@ func (r *Repository) FindByTags(_ context.Context, tags []string) ([]*projection
 }
 
 // List returns all pets.
-func (r *Repository) List(_ context.Context) ([]*projection.Projection[*domain.Pet], error) {
+func (r *Repository) List(_ context.Context) ([]*types.PetProjection, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	list := make([]*projection.Projection[*domain.Pet], 0, len(r.pets))
+	list := make([]*types.PetProjection, 0, len(r.pets))
 	for _, entry := range r.pets {
 		list = append(list, projectionCopy(entry))
 	}
 	return list, nil
 }
 
-func projectionCopy(entry *storedPet) *projection.Projection[*domain.Pet] {
-	return &projection.Projection[*domain.Pet]{
-		Entity:   clonePet(entry.pet),
-		Metadata: entry.metadata,
-	}
+func projectionCopy(entry *storedPet) *types.PetProjection {
+	return types.NewPetProjection(clonePet(entry.pet), entry.created, entry.updated)
 }
 
 func clonePet(p *domain.Pet) *domain.Pet {

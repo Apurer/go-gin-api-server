@@ -1,4 +1,10 @@
 //go:build integration
+// +build integration
+
+// To enable gopls support for this file, add the following to your VSCode settings.json:
+// "gopls": {
+//   "buildFlags": ["-tags=integration"]
+// }
 
 package postgres
 
@@ -81,17 +87,17 @@ func TestPostgresRepository_SaveAndGetByID(t *testing.T) {
 	projection, err := repo.Save(ctx, pet)
 	require.NoError(t, err)
 	assert.NotNil(t, projection)
-	assert.Equal(t, "Buddy", projection.Entity.Name)
+	assert.Equal(t, "Buddy", projection.Pet.Name)
 	assert.False(t, projection.Metadata.CreatedAt.IsZero())
 	assert.False(t, projection.Metadata.UpdatedAt.IsZero())
 
 	// Get by ID
 	retrieved, err := repo.GetByID(ctx, 1)
 	require.NoError(t, err)
-	assert.Equal(t, "Buddy", retrieved.Entity.Name)
-	assert.Equal(t, domain.StatusAvailable, retrieved.Entity.Status)
-	assert.Equal(t, "Dogs", retrieved.Entity.Category.Name)
-	assert.Len(t, retrieved.Entity.Tags, 2)
+	assert.Equal(t, "Buddy", retrieved.Pet.Name)
+	assert.Equal(t, domain.StatusAvailable, retrieved.Pet.Status)
+	assert.Equal(t, "Dogs", retrieved.Pet.Category.Name)
+	assert.Len(t, retrieved.Pet.Tags, 2)
 }
 
 func TestPostgresRepository_FindByStatus(t *testing.T) {
@@ -164,7 +170,7 @@ func TestPostgresRepository_FindByTags(t *testing.T) {
 	result, err := repo.FindByTags(ctx, []string{"friendly"})
 	require.NoError(t, err)
 	assert.Len(t, result, 1)
-	assert.Equal(t, "Friendly Dog", result[0].Entity.Name)
+	assert.Equal(t, "Friendly Dog", result[0].Pet.Name)
 }
 
 func TestPostgresRepository_Delete(t *testing.T) {
@@ -251,8 +257,8 @@ func TestPostgresRepository_Update(t *testing.T) {
 	updated, err := repo.Save(ctx, pet)
 	require.NoError(t, err)
 
-	assert.Equal(t, "Updated Name", updated.Entity.Name)
-	assert.Equal(t, domain.StatusPending, updated.Entity.Status)
+	assert.Equal(t, "Updated Name", updated.Pet.Name)
+	assert.Equal(t, domain.StatusPending, updated.Pet.Status)
 	assert.Equal(t, originalCreatedAt.Unix(), updated.Metadata.CreatedAt.Unix())
 	assert.True(t, updated.Metadata.UpdatedAt.After(originalCreatedAt))
 }

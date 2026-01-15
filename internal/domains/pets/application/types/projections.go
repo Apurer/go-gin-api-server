@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/shared/projection"
 )
 
 // PetMetadata captures infrastructure timestamps associated with a persisted pet.
@@ -19,30 +18,32 @@ type PetProjection struct {
 	Metadata PetMetadata
 }
 
-// FromDomainProjection adapts a shared projection into the application-friendly DTO.
-func FromDomainProjection(source *projection.Projection[*domain.Pet]) *PetProjection {
-	if source == nil {
+// NewPetProjection wraps an aggregate with persistence metadata.
+func NewPetProjection(pet *domain.Pet, createdAt, updatedAt time.Time) *PetProjection {
+	if pet == nil {
 		return nil
 	}
 	return &PetProjection{
-		Pet: source.Entity,
+		Pet: pet,
 		Metadata: PetMetadata{
-			CreatedAt: source.Metadata.CreatedAt,
-			UpdatedAt: source.Metadata.UpdatedAt,
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
 		},
 	}
 }
 
-// FromDomainProjectionList adapts a slice of shared projections.
-func FromDomainProjectionList(sources []*projection.Projection[*domain.Pet]) []*PetProjection {
+// CloneProjectionList duplicates a slice of projections.
+func CloneProjectionList(sources []*PetProjection) []*PetProjection {
 	if len(sources) == 0 {
 		return nil
 	}
 	result := make([]*PetProjection, 0, len(sources))
 	for _, src := range sources {
-		if converted := FromDomainProjection(src); converted != nil {
-			result = append(result, converted)
+		if src == nil {
+			continue
 		}
+		clone := *src
+		result = append(result, &clone)
 	}
 	return result
 }
