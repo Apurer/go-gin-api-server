@@ -9,9 +9,9 @@ GO=go
 GOFLAGS=-v
 
 # Git repo info used by OpenAPI generator (can be overridden when calling make)
-# Defaults keep the placeholder values already used in the project.
-GIT_USER_ID ?= GIT_USER_ID
-GIT_REPO_ID ?= GIT_REPO_ID
+# Defaults set to the repository owner and name you requested.
+GIT_USER_ID ?= Apurer
+GIT_REPO_ID ?= go-gin-api-server
 
 # Default target
 all: lint test build
