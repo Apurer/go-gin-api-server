@@ -44,6 +44,21 @@ services:
       temporal:
         condition: service_started
 
+  session-purger:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: session-purger
+      args:
+        GO_VERSION: "1.24"
+    environment:
+      POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/petstore?sslmode=disable
+      SESSION_TTL_HOURS: "24"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   postgres:
     image: postgres:16-alpine
     environment:

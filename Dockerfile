@@ -14,6 +14,7 @@ ARG TARGETARCH=amd64
 ENV CGO_ENABLED=0
 RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o /out/petstore-api ./cmd/api
 RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o /out/petstore-worker ./cmd/worker
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o /out/session-purger ./cmd/session-purger
 
 FROM gcr.io/distroless/static:nonroot AS worker
 WORKDIR /app
@@ -28,3 +29,8 @@ COPY --from=build /out/petstore-api /app/petstore-api
 COPY --from=build /src/api /app/api
 EXPOSE 8080
 ENTRYPOINT ["/app/petstore-api"]
+
+FROM gcr.io/distroless/static:nonroot AS session-purger
+WORKDIR /app
+COPY --from=build /out/session-purger /app/session-purger
+ENTRYPOINT ["/app/session-purger"]
