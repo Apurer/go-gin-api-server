@@ -82,6 +82,12 @@ Environment knobs:
 - Contract lives at `api/openapi.yaml` and is served by the generated router at `/openapi.yaml` and `/openapi.json`.
 - Interactive docs are available at `/swagger`; handlers in `go/api_*.go` delegate to the application services through mappers while preserving the generated DTOs.
 
+## Contract testing (Pact)
+- Generate consumer pacts (writes to `./pacts`): `make pact-consumer` (requires `libpact_ffi` from the Pact standalone bundle or Homebrew `pact-ruby-standalone`).
+- Verify provider against local pacts: `make pact-provider` (starts the API in-memory for verification).
+- End-to-end: `make pact-contracts` runs both steps; ensure pacts exist before verifying in CI.
+- Optional broker: `docker-compose up pact-broker` brings up a Pact Broker on `http://localhost:9292` backed by the `pactbroker-db` Postgres service.
+
 ## Integrating other Pet APIs
 - Keep the domain model authoritative and treat providers as adapters: `internal/domains/pets/adapters/external/partner` maps domain pets to partner payloads and uses `internal/clients/http/partner` to sync.
 - Store external identities on the aggregate (`ExternalReference`) so you can reconcile records without leaking provider details elsewhere.

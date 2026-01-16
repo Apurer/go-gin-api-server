@@ -1,4 +1,4 @@
-.PHONY: all build run test test-unit test-integration lint fmt clean deps tidy help
+.PHONY: all build run test test-unit test-integration lint fmt clean deps tidy help pact-consumer pact-provider pact-contracts
 
 # Build variables
 BINARY_NAME=petstore-api
@@ -7,6 +7,9 @@ SESSION_PURGER_BINARY=session-purger
 BUILD_DIR=bin
 GO=go
 GOFLAGS=-v
+
+# Go module cache location
+GO_MOD_CACHE=$(shell go env GOMODCACHE 2>/dev/null || echo $(HOME)/go/pkg/mod)
 
 # Git repo info used by OpenAPI generator (can be overridden when calling make)
 # Defaults set to the repository owner and name you requested.
@@ -62,6 +65,27 @@ test-coverage:
 	$(GO) test -v -coverprofile=coverage.out ./...
 	$(GO) tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
+
+## pact-consumer: Run Pact consumer contract tests (generates ./pacts)
+pact-consumer:
+	$(GO) test -v -tags=pact ./test/pact/consumer -count=1
+
+## pact-provider: Verify provider against generated Pact files
+pact-provider:
+	$(GO) test -v -tags=pact ./test/pact/provider -count=1
+
+## pact-contracts: Generate and verify Pact contracts
+pact-contracts: pact-consumer pact-provider
+
+pact-publish:
+	docker run --rm \
+	-v "$$PWD/pacts:/pacts" \
+	pactfoundation/pact-cli:latest \
+	pact-broker publish /pacts \
+	--consumer-app-version 1.0.0 \
+	--tag local \
+	--broker-base-url http://host.docker.internal:9292
+
 
 ## lint: Run all linters
 lint: lint-go lint-depguard

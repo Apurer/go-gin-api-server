@@ -101,5 +101,31 @@ services:
     ports:
       - "8088:8080"
 
+  pactbroker-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pact_broker
+      POSTGRES_USER: pact_broker
+      POSTGRES_PASSWORD: pact_broker
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pact_broker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pactbroker_data:/var/lib/postgresql/data
+
+  pact-broker:
+    image: pactfoundation/pact-broker:latest
+    environment:
+      PACT_BROKER_DATABASE_URL: postgres://pact_broker:pact_broker@pactbroker-db:5432/pact_broker
+      PACT_BROKER_LOG_LEVEL: INFO
+    depends_on:
+      pactbroker-db:
+        condition: service_healthy
+    ports:
+      - "9292:9292"
+
 volumes:
   postgres_data:
+  pactbroker_data:
