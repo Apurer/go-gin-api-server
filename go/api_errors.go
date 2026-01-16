@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	apierrors "github.com/GIT_USER_ID/GIT_REPO_ID/internal/shared/errors"
+	apierrors "github.com/Apurer/go-gin-api-server/internal/shared/errors"
 )
 
 // respondProblem maps a ProblemDetail through the shared responder.

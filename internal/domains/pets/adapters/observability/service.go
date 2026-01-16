@@ -11,12 +11,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	nooptrace "go.opentelemetry.io/otel/trace/noop"
 
-	pettypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
+	pettypes "github.com/Apurer/go-gin-api-server/internal/domains/pets/application/types"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/ports"
 )
 
-const tracerName = "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/observability/service"
+const tracerName = "github.com/Apurer/go-gin-api-server/internal/domains/pets/adapters/observability/service"
 
 // Service decorates a pets application port with tracing, logging, and metrics.
 type Service struct {

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	userpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/persistence/postgres"
-	platformpostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/postgres"
+	userpostgres "github.com/Apurer/go-gin-api-server/internal/domains/users/adapters/persistence/postgres"
+	platformpostgres "github.com/Apurer/go-gin-api-server/internal/platform/postgres"
 )
 
 func main() {

@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/store/domain"
 )
 
 // Service exposes store/order use cases to adapters.

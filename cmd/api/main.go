@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	apiapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/app/api"
+	apiapp "github.com/Apurer/go-gin-api-server/internal/app/api"
 )
 
 func main() {

@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/domain"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/ports"
+	"github.com/Apurer/go-gin-api-server/internal/domains/store/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/store/ports"
 )
 
 type fakeStoreRepo struct {

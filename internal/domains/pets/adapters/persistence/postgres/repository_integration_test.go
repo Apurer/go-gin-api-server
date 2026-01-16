@@ -22,10 +22,10 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	petspostgres "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/persistence/postgres"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/migrations"
+	petspostgres "github.com/Apurer/go-gin-api-server/internal/domains/pets/adapters/persistence/postgres"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/ports"
+	"github.com/Apurer/go-gin-api-server/internal/platform/migrations"
 )
 
 func setupPostgresContainer(t *testing.T) (*gorm.DB, func()) {

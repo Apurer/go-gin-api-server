@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	userports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/ports"
+	userports "github.com/Apurer/go-gin-api-server/internal/domains/users/ports"
 )
 
 // SessionStore persists user sessions in PostgreSQL.

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/users/domain"
 )
 
 var ErrNotFound = errors.New("user not found")

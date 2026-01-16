@@ -3,7 +3,7 @@ package types
 import (
 	"time"
 
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/domain"
 )
 
 // PetMetadata captures infrastructure timestamps associated with a persisted pet.

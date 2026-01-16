@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/domain"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/ports"
+	"github.com/Apurer/go-gin-api-server/internal/domains/users/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/users/ports"
 )
 
 // Service exposes user bounded context use cases.

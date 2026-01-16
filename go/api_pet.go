@@ -8,11 +8,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	pethttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/http/mapper"
-	petsapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application"
-	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
-	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
-	apierrors "github.com/GIT_USER_ID/GIT_REPO_ID/internal/shared/errors"
+	pethttpmapper "github.com/Apurer/go-gin-api-server/internal/domains/pets/adapters/http/mapper"
+	petsapp "github.com/Apurer/go-gin-api-server/internal/domains/pets/application"
+	petstypes "github.com/Apurer/go-gin-api-server/internal/domains/pets/application/types"
+	petsports "github.com/Apurer/go-gin-api-server/internal/domains/pets/ports"
+	apierrors "github.com/Apurer/go-gin-api-server/internal/shared/errors"
 )
 
 // PetAPI wires HTTP transport with the pets bounded context service and workflows.

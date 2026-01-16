@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	partnerclient "github.com/GIT_USER_ID/GIT_REPO_ID/internal/clients/http/partner"
-	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
+	partnerclient "github.com/Apurer/go-gin-api-server/internal/clients/http/partner"
+	petstypes "github.com/Apurer/go-gin-api-server/internal/domains/pets/application/types"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/domain"
 )
 
 // ToPayload converts the local domain aggregate into the partner payload shape.

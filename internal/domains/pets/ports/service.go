@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	pettypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
+	pettypes "github.com/Apurer/go-gin-api-server/internal/domains/pets/application/types"
 )
 
 // UploadImageResult describes the metadata returned by the upload flow.

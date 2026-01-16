@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	types "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
+	types "github.com/Apurer/go-gin-api-server/internal/domains/pets/application/types"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/ports"
 )
 
 // Service orchestrates the pets bounded context use cases.

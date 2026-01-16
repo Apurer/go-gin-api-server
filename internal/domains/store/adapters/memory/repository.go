@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/domain"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/ports"
+	"github.com/Apurer/go-gin-api-server/internal/domains/store/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/store/ports"
 )
 
 var _ ports.Repository = (*Repository)(nil)

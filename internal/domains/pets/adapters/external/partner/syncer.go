@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	partnerclient "github.com/GIT_USER_ID/GIT_REPO_ID/internal/clients/http/partner"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
+	partnerclient "github.com/Apurer/go-gin-api-server/internal/clients/http/partner"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/ports"
 )
 
 // Syncer implements the outbound partner sync port.

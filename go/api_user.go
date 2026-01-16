@@ -7,10 +7,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	userhttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/http/mapper"
-	userapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/application"
-	userports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/ports"
-	apierrors "github.com/GIT_USER_ID/GIT_REPO_ID/internal/shared/errors"
+	userhttpmapper "github.com/Apurer/go-gin-api-server/internal/domains/users/adapters/http/mapper"
+	userapp "github.com/Apurer/go-gin-api-server/internal/domains/users/application"
+	userports "github.com/Apurer/go-gin-api-server/internal/domains/users/ports"
+	apierrors "github.com/Apurer/go-gin-api-server/internal/shared/errors"
 )
 
 // UserAPI implements the user OpenAPI section.

@@ -1,6 +1,6 @@
 package mapper
 
-import userdomain "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/domain"
+import userdomain "github.com/Apurer/go-gin-api-server/internal/domains/users/domain"
 
 // User represents the transport-level user payload.
 type User struct {

@@ -8,10 +8,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	petmemory "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/adapters/memory"
-	pettypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
+	petmemory "github.com/Apurer/go-gin-api-server/internal/domains/pets/adapters/memory"
+	pettypes "github.com/Apurer/go-gin-api-server/internal/domains/pets/application/types"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/ports"
 )
 
 func TestAddPet_Success(t *testing.T) {

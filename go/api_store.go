@@ -15,10 +15,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	storehttpmapper "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/adapters/http/mapper"
-	storeapp "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/application"
-	storeports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/ports"
-	apierrors "github.com/GIT_USER_ID/GIT_REPO_ID/internal/shared/errors"
+	storehttpmapper "github.com/Apurer/go-gin-api-server/internal/domains/store/adapters/http/mapper"
+	storeapp "github.com/Apurer/go-gin-api-server/internal/domains/store/application"
+	storeports "github.com/Apurer/go-gin-api-server/internal/domains/store/ports"
+	apierrors "github.com/Apurer/go-gin-api-server/internal/shared/errors"
 )
 
 // StoreAPI implements the store/order OpenAPI operations.

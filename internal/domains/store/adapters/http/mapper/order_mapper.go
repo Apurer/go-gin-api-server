@@ -3,7 +3,7 @@ package mapper
 import (
 	"time"
 
-	storedomain "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/store/domain"
+	storedomain "github.com/Apurer/go-gin-api-server/internal/domains/store/domain"
 )
 
 // Order represents the transport-layer shape used by the generated handlers.

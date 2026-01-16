@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,9 +16,9 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/domain"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/ports"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/migrations"
+	"github.com/Apurer/go-gin-api-server/internal/domains/users/domain"
+	"github.com/Apurer/go-gin-api-server/internal/domains/users/ports"
+	"github.com/Apurer/go-gin-api-server/internal/platform/migrations"
 )
 
 func setupUsersPostgresContainer(t *testing.T) (*gorm.DB, func()) {

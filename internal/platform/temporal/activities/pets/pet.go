@@ -11,9 +11,9 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
-	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
-	petsports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
+	petstypes "github.com/Apurer/go-gin-api-server/internal/domains/pets/application/types"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/domain"
+	petsports "github.com/Apurer/go-gin-api-server/internal/domains/pets/ports"
 )
 
 const (

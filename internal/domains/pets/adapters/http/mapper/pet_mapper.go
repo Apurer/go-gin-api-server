@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/domain"
+	petstypes "github.com/Apurer/go-gin-api-server/internal/domains/pets/application/types"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/domain"
 )
 
 // Category is the HTTP representation of a pet category.

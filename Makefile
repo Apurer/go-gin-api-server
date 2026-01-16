@@ -3,6 +3,7 @@
 # Build variables
 BINARY_NAME=petstore-api
 WORKER_BINARY=petstore-worker
+SESSION_PURGER_BINARY=session-purger
 BUILD_DIR=bin
 GO=go
 GOFLAGS=-v
@@ -18,7 +19,7 @@ help:
 	@sed -n 's/^##//p' $(MAKEFILE_LIST) | column -t -s ':' | sed -e 's/^/ /'
 
 ## build: Build all binaries
-build: build-api build-worker
+build: build-api build-worker build-session-purger
 
 ## build-api: Build the API server
 build-api:
@@ -27,6 +28,10 @@ build-api:
 ## build-worker: Build the Temporal worker
 build-worker:
 	$(GO) build $(GOFLAGS) -o $(BUILD_DIR)/$(WORKER_BINARY) ./cmd/worker
+
+## build-session-purger: Build the Temporal worker
+build-session-purger:
+	$(GO) build $(GOFLAGS) -o $(BUILD_DIR)/$(SESSION_PURGER_BINARY) ./cmd/session-purger
 
 ## run: Run the API server
 run:
@@ -99,7 +104,13 @@ docker-run:
 	docker run -p 8080:8080 $(BINARY_NAME):latest
 
 ## generate: Run code generation
-generate:
+## openapi-gen: Generate OpenAPI server code (requires Docker)
+openapi-gen:
+	@which docker > /dev/null || (echo "Docker not found: please install Docker"; exit 1)
+	docker run --rm -v "$(shell pwd)":/local openapitools/openapi-generator-cli generate -i /local/api/openapi.yaml -g go-gin-server -o /local/generated
+
+## generate: Run code generation (OpenAPI + go generate)
+generate: openapi-gen
 	$(GO) generate ./...
 
 ## openapi-validate: Validate OpenAPI spec

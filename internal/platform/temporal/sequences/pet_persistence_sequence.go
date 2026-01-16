@@ -6,8 +6,8 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
-	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
-	petactivities "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/temporal/activities/pets"
+	petstypes "github.com/Apurer/go-gin-api-server/internal/domains/pets/application/types"
+	petactivities "github.com/Apurer/go-gin-api-server/internal/platform/temporal/activities/pets"
 )
 
 // RunPetPersistenceSequence executes the ordered set of activities needed to persist a pet aggregate.

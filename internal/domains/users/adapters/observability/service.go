@@ -10,11 +10,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	nooptrace "go.opentelemetry.io/otel/trace/noop"
 
-	userdomain "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/domain"
-	userports "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/ports"
+	userdomain "github.com/Apurer/go-gin-api-server/internal/domains/users/domain"
+	userports "github.com/Apurer/go-gin-api-server/internal/domains/users/ports"
 )
 
-const tracerName = "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/users/adapters/observability/service"
+const tracerName = "github.com/Apurer/go-gin-api-server/internal/domains/users/adapters/observability/service"
 
 // Service decorates the user service with tracing, logging, and metrics.
 type Service struct {

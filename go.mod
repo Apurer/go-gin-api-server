@@ -1,6 +1,10 @@
-module github.com/GIT_USER_ID/GIT_REPO_ID
+module github.com/Apurer/go-gin-api-server
 
 go 1.24.0
+
+replace github.com/Apurer/go-gin-api-server/generated => ./generated
+
+require github.com/Apurer/go-gin-api-server/generated v0.0.0-00010101000000-000000000000
 
 require (
 	github.com/gin-gonic/gin v1.9.1

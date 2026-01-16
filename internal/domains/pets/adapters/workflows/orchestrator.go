@@ -9,9 +9,9 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.temporal.io/sdk/client"
 
-	petstypes "github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/application/types"
-	"github.com/GIT_USER_ID/GIT_REPO_ID/internal/domains/pets/ports"
-	petworkflows "github.com/GIT_USER_ID/GIT_REPO_ID/internal/platform/temporal/workflows/pets"
+	petstypes "github.com/Apurer/go-gin-api-server/internal/domains/pets/application/types"
+	"github.com/Apurer/go-gin-api-server/internal/domains/pets/ports"
+	petworkflows "github.com/Apurer/go-gin-api-server/internal/platform/temporal/workflows/pets"
 )
 
 var (
