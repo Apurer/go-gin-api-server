@@ -1,1 +1,3 @@
 .golangci.yml
+.DS_Store
+bin/
