@@ -117,7 +117,13 @@ func buildPartnerSyncFromEnv(logger *slog.Logger) petsports.PartnerSync {
 	if logger != nil {
 		logger.Info("partner sync enabled", slog.String("base_url", baseURL))
 	}
-	client := partnerclient.NewClient(baseURL, nil)
+	client, err := partnerclient.NewPartnerClient(baseURL, nil)
+	if err != nil {
+		if logger != nil {
+			logger.Error("failed to init partner client", slog.String("base_url", baseURL), slog.String("error", err.Error()))
+		}
+		return nil
+	}
 	return petspartner.NewSyncer(client)
 }
 

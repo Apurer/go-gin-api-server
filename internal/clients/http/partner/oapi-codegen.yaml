@@ -1,0 +1,7 @@
+package: partner
+generate:
+  client: true
+  models: true
+output: oapi_client.gen.go
+output-options:
+  client-type-name: PartnerAPIClient

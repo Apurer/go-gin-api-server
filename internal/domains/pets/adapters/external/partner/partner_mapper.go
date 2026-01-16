@@ -24,11 +24,15 @@ func ToPayload(p *domain.Pet) partnerclient.PetPayload {
 			labels[k] = v
 		}
 	}
+	var labelsPtr *map[string]string
+	if len(labels) > 0 {
+		labelsPtr = &labels
+	}
 	return partnerclient.PetPayload{
 		Reference:    strconv.FormatInt(p.ID, 10),
 		Title:        p.Name,
 		Photos:       append([]string{}, p.PhotoURLs...),
-		Labels:       labels,
+		Labels:       labelsPtr,
 		Availability: availability,
 	}
 }
@@ -58,12 +62,12 @@ func FromPayload(payload partnerclient.PetPayload) petstypes.PartnerImportCandid
 	}
 }
 
-func cloneLabels(labels map[string]string) map[string]string {
-	if len(labels) == 0 {
+func cloneLabels(labels *map[string]string) map[string]string {
+	if labels == nil || len(*labels) == 0 {
 		return nil
 	}
-	copy := make(map[string]string, len(labels))
-	for k, v := range labels {
+	copy := make(map[string]string, len(*labels))
+	for k, v := range *labels {
 		copy[k] = v
 	}
 	return copy

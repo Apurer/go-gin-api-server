@@ -19,6 +19,14 @@ paths:
           schema:
             type: string
           description: Partner identifier derived from the local pet ID.
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+          description: |
+            Optional idempotency key used by the partner to deduplicate retries.
+            Reusing a key with a different payload is rejected.
       requestBody:
         required: true
         content:
@@ -32,6 +40,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SyncResponse'
+        '409':
+          description: Idempotency conflict when the same key is reused with a different payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '4XX':
           description: Partner rejected the payload
           content:

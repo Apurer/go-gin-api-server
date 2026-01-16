@@ -114,9 +114,12 @@ openapi-gen:
 	@which docker > /dev/null || (echo "Docker not found: please install Docker"; exit 1)
 	docker run --rm -v "$(shell pwd)":/local openapitools/openapi-generator-cli generate -i /local/api/openapi.yaml -g go-gin-server -o /local/generated --git-user-id $(GIT_USER_ID) --git-repo-id $(GIT_REPO_ID)
 
-## generate: Run code generation (OpenAPI + go generate)
-generate: openapi-gen
-	$(GO) generate ./...
+## partner-client-gen: Generate the partner HTTP client (requires oapi-codegen)
+partner-client-gen:
+	$(GO) generate ./internal/clients/http/partner
+
+## generate: Run code generation (OpenAPI + partner client)
+generate: openapi-gen partner-client-gen
 
 ## openapi-validate: Validate OpenAPI spec
 openapi-validate:
