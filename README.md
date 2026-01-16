@@ -5,20 +5,22 @@ This repo keeps the OpenAPI-generated Gin transport intact while moving the busi
 ## Layout
 ```
 go-gin-api-server/
-├── api/                      # OpenAPI contract served at /openapi.(json|yaml) and /swagger
-├── bin/                      # Local build artifacts (ignored in VCS)
-├── cmd/                      # Entry points
-│   ├── api/                  # HTTP API composition root (observability, repos, services, router)
-│   ├── worker/               # Temporal worker wiring for pet creation
-│   └── session-purger/       # CLI to purge expired sessions
-├── docs/                     # Architecture notes and diagrams
-├── generated/go/             # Generated Gin router + DTOs delegating to application services
-├── internal/                 # Domain/application code, adapters, and platform helpers
-│   ├── app/                  # Process wiring (config, run logic)
-│   ├── clients/http/partner/ # Partner sync HTTP client used by the mapper/sync adapter
-│   ├── domains/              # Bounded contexts (pets, store, users)
-│   ├── platform/             # OTEL, Postgres helpers, migrations, Temporal workflows
-│   └── shared/               # Cross-cutting projection helpers
+├── api/                            # OpenAPI contract served at /openapi.(json|yaml) and /swagger
+├── bin/                            # Local build artifacts (ignored in VCS)
+├── cmd/                            # Entry points
+│   ├── api/                        # HTTP API composition root (observability, repos, services, router)
+│   ├── worker/                     # Temporal worker wiring for pet creation
+│   └── session-purger/             # CLI to purge expired sessions
+├── docs/                           # Architecture notes and diagrams
+├── generated/go/                   # Generated Gin router + DTOs delegating to application services
+├── internal/                       # Domain/application code, adapters, and platform helpers
+│   ├── app/                        # Process wiring (config, run logic)
+│   ├── clients/http/partner/       # Partner sync HTTP client used by the mapper/sync adapter
+│   ├── domains/                    # Bounded contexts (pets, store, users)
+│   ├── platform/                   # OTEL, Postgres helpers, migrations, Temporal workflows
+│   └── shared/                     # Cross-cutting projection helpers
+├── pacts/                          # Generated Pact contracts
+├── test/pact/                      # Pact consumer/provider tests and helpers
 ├── Dockerfile
 ├── Makefile
 ├── go.mod
@@ -86,6 +88,8 @@ Environment knobs:
 - Generate consumer pacts (writes to `./pacts`): `make pact-consumer` (requires `libpact_ffi` from the Pact standalone bundle or Homebrew `pact-ruby-standalone`).
 - Verify provider against local pacts: `make pact-provider` (starts the API in-memory for verification).
 - End-to-end: `make pact-contracts` runs both steps; ensure pacts exist before verifying in CI.
+- Coverage: consumer tests exercise pets (CRUD + grooming/form), store orders (place/get/delete/inventory), and user CRUD/login/logout; provider states live in `test/pact/pacttest.go`.
+- If your environment blocks the default Go build cache path, set `GOCACHE=/tmp/go-build` when running the Pact suites.
 - Optional broker: `docker-compose up pact-broker` brings up a Pact Broker on `http://localhost:9292` backed by the `pactbroker-db` Postgres service.
 
 ## Integrating other Pet APIs
