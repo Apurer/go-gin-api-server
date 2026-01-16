@@ -17,16 +17,32 @@ const (
 	StatePetsBaseline = "pets baseline"
 	StatePetExists    = "pet with id 101 exists"
 	StatePetMissing   = "no pet with id 404"
+	StatePetsSearch   = "pets exist for search queries"
+	StateOrdersBase   = "store orders baseline"
+	StateOrderExists  = "order with id 301 exists"
+	StateInventory    = "store inventory seeded"
+	StateUsersBase    = "users baseline"
+	StateUserExists   = "user pact-user exists"
 )
 
 const (
 	ExistingPetID int64 = 101
 	MissingPetID  int64 = 404
+	SearchPetID   int64 = 202
+
+	ExistingOrderID int64 = 301
+	MissingOrderID  int64 = 999
+
+	UserPrimaryUsername   = "pact-user"
+	UserSecondaryUsername = "pact-admin"
+	MissingUsername       = "ghost-user"
+	UserPassword          = "pact-pass"
 )
 
 const (
 	examplePhotoURL = "https://example.pact/pets/fluffy.png"
 	examplePetName  = "Fluffy Pact Cat"
+	exampleShipDate = "2024-06-12T10:00:00Z"
 )
 
 // PactDir returns the workspace-level directory for generated pact files.
@@ -63,6 +79,51 @@ func ExamplePetPayload() map[string]any {
 		"photoUrls": []string{examplePhotoURL},
 		"status":    "available",
 	}
+}
+
+// ExampleOrderPayload provides stable test data for order interactions.
+func ExampleOrderPayload() map[string]any {
+	return map[string]any{
+		"id":       ExistingOrderID,
+		"petId":    ExistingPetID,
+		"quantity": 2,
+		"shipDate": exampleShipDate,
+		"status":   "approved",
+		"complete": true,
+	}
+}
+
+// ExampleUserPayload provides stable test data for user interactions.
+func ExampleUserPayload() map[string]any {
+	return map[string]any{
+		"id":         501,
+		"username":   UserPrimaryUsername,
+		"firstName":  "Pact",
+		"lastName":   "User",
+		"email":      "pact.user@example.com",
+		"password":   UserPassword,
+		"phone":      "+1234567890",
+		"userStatus": 1,
+	}
+}
+
+// ExampleSecondaryUserPayload adds a second user for batch flows.
+func ExampleSecondaryUserPayload() map[string]any {
+	return map[string]any{
+		"id":         502,
+		"username":   UserSecondaryUsername,
+		"firstName":  "Pact",
+		"lastName":   "Admin",
+		"email":      "pact.admin@example.com",
+		"password":   UserPassword,
+		"phone":      "+19876543210",
+		"userStatus": 2,
+	}
+}
+
+// ExampleUserBatch returns a slice with both example users.
+func ExampleUserBatch() []map[string]any {
+	return []map[string]any{ExampleUserPayload(), ExampleSecondaryUserPayload()}
 }
 
 // projectRoot walks up from this file to the workspace root.

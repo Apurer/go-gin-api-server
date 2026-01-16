@@ -137,6 +137,1075 @@
         },
         "status": 404
       }
+    },
+    {
+      "description": "a request to update an existing pet",
+      "providerState": "pet with id 101 exists",
+      "request": {
+        "body": {
+          "hairLengthCm": 1.5,
+          "id": 101,
+          "name": "Fluffy Pact Cat v2",
+          "photoUrls": [
+            "https://example.pact/pets/fluffy.png"
+          ],
+          "status": "sold"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body.hairLengthCm": {
+            "match": "type"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.name": {
+            "match": "type"
+          },
+          "$.body.photoUrls": {
+            "match": "type",
+            "min": 1
+          },
+          "$.body.status": {
+            "match": "regex",
+            "regex": "available|pending|sold"
+          }
+        },
+        "method": "PUT",
+        "path": "/v2/pet"
+      },
+      "response": {
+        "body": {
+          "hairLengthCm": 1.5,
+          "id": 101,
+          "name": "Fluffy Pact Cat v2",
+          "photoUrls": [
+            "https://example.pact/pets/fluffy.png"
+          ],
+          "status": "sold"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body.hairLengthCm": {
+            "match": "type"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.name": {
+            "match": "type"
+          },
+          "$.body.photoUrls": {
+            "match": "type",
+            "min": 1
+          },
+          "$.body.status": {
+            "match": "regex",
+            "regex": "available|pending|sold"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to find pets by status",
+      "providerState": "pets exist for search queries",
+      "request": {
+        "method": "GET",
+        "path": "/v2/pet/findByStatus",
+        "query": "status=available&status=pending"
+      },
+      "response": {
+        "body": [
+          {
+            "id": 202,
+            "name": "Searchable Pact Pet",
+            "photoUrls": [
+              "https://example.pact/pets/searchable.png"
+            ],
+            "status": "available",
+            "tags": [
+              {
+                "id": 1,
+                "name": "pact"
+              }
+            ]
+          },
+          {
+            "id": 202,
+            "name": "Searchable Pact Pet",
+            "photoUrls": [
+              "https://example.pact/pets/searchable.png"
+            ],
+            "status": "available",
+            "tags": [
+              {
+                "id": 1,
+                "name": "pact"
+              }
+            ]
+          }
+        ],
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body": {
+            "match": "type",
+            "min": 2
+          },
+          "$.body[*].id": {
+            "match": "type"
+          },
+          "$.body[*].name": {
+            "match": "type"
+          },
+          "$.body[*].photoUrls": {
+            "match": "type",
+            "min": 1
+          },
+          "$.body[*].status": {
+            "match": "regex",
+            "regex": "available|pending|sold"
+          },
+          "$.body[*].tags": {
+            "match": "type",
+            "min": 1
+          },
+          "$.body[*].tags[*].id": {
+            "match": "type"
+          },
+          "$.body[*].tags[*].name": {
+            "match": "type"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to find pets by tags",
+      "providerState": "pets exist for search queries",
+      "request": {
+        "method": "GET",
+        "path": "/v2/pet/findByTags",
+        "query": "tags=pact&tags=featured"
+      },
+      "response": {
+        "body": [
+          {
+            "id": 202,
+            "name": "Searchable Pact Pet",
+            "photoUrls": [
+              "https://example.pact/pets/searchable.png"
+            ],
+            "status": "available",
+            "tags": [
+              {
+                "id": 1,
+                "name": "pact"
+              }
+            ]
+          }
+        ],
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body": {
+            "match": "type",
+            "min": 1
+          },
+          "$.body[*].id": {
+            "match": "type"
+          },
+          "$.body[*].name": {
+            "match": "type"
+          },
+          "$.body[*].photoUrls": {
+            "match": "type",
+            "min": 1
+          },
+          "$.body[*].status": {
+            "match": "regex",
+            "regex": "available|pending|sold"
+          },
+          "$.body[*].tags": {
+            "match": "type",
+            "min": 1
+          },
+          "$.body[*].tags[*].id": {
+            "match": "type"
+          },
+          "$.body[*].tags[*].name": {
+            "match": "type"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to delete a pet",
+      "providerState": "pets exist for search queries",
+      "request": {
+        "method": "DELETE",
+        "path": "/v2/pet/202"
+      },
+      "response": {
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to update a pet with form data",
+      "providerState": "pet with id 101 exists",
+      "request": {
+        "body": "name=Fluffy+Form+Cat&status=pending",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        "matchingRules": {
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/x-www-form-urlencoded.*"
+          }
+        },
+        "method": "POST",
+        "path": "/v2/pet/101"
+      },
+      "response": {
+        "body": {
+          "id": 101,
+          "name": "Fluffy Form Cat",
+          "photoUrls": [
+            "https://example.pact/pets/fluffy.png"
+          ],
+          "status": "pending"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.name": {
+            "match": "type"
+          },
+          "$.body.photoUrls": {
+            "match": "type",
+            "min": 1
+          },
+          "$.body.status": {
+            "match": "regex",
+            "regex": "available|pending|sold"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to groom a pet",
+      "providerState": "pet with id 101 exists",
+      "request": {
+        "body": {
+          "initialHairLengthCm": 3.5,
+          "trimByCm": 1
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body.initialHairLengthCm": {
+            "match": "type"
+          },
+          "$.body.trimByCm": {
+            "match": "type"
+          }
+        },
+        "method": "POST",
+        "path": "/v2/pet/101/groom"
+      },
+      "response": {
+        "body": {
+          "hairLengthCm": 2.5,
+          "id": 101,
+          "name": "Fluffy Pact Cat",
+          "photoUrls": [
+            "https://example.pact/pets/fluffy.png"
+          ],
+          "status": "available"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body.hairLengthCm": {
+            "match": "type"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.name": {
+            "match": "type"
+          },
+          "$.body.photoUrls": {
+            "match": "type",
+            "min": 1
+          },
+          "$.body.status": {
+            "match": "regex",
+            "regex": "available|pending|sold"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to place an order",
+      "providerState": "store orders baseline",
+      "request": {
+        "body": {
+          "complete": true,
+          "id": 301,
+          "petId": 101,
+          "quantity": 2,
+          "shipDate": "2024-06-12T10:00:00Z",
+          "status": "approved"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body.complete": {
+            "match": "type"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.petId": {
+            "match": "type"
+          },
+          "$.body.quantity": {
+            "match": "type"
+          },
+          "$.body.shipDate": {
+            "match": "regex",
+            "regex": "^\\d{4}-\\d{2}-\\d{2}T.*Z$"
+          },
+          "$.body.status": {
+            "match": "regex",
+            "regex": "placed|approved|delivered"
+          }
+        },
+        "method": "POST",
+        "path": "/v2/store/order"
+      },
+      "response": {
+        "body": {
+          "complete": true,
+          "id": 301,
+          "petId": 101,
+          "quantity": 2,
+          "shipDate": "2024-06-12T10:00:00Z",
+          "status": "approved"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body.complete": {
+            "match": "type"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.petId": {
+            "match": "type"
+          },
+          "$.body.quantity": {
+            "match": "type"
+          },
+          "$.body.shipDate": {
+            "match": "regex",
+            "regex": "^\\d{4}-\\d{2}-\\d{2}T.*Z$"
+          },
+          "$.body.status": {
+            "match": "regex",
+            "regex": "placed|approved|delivered"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to fetch an order",
+      "providerState": "order with id 301 exists",
+      "request": {
+        "method": "GET",
+        "path": "/v2/store/order/301"
+      },
+      "response": {
+        "body": {
+          "complete": true,
+          "id": 301,
+          "petId": 101,
+          "quantity": 2,
+          "shipDate": "2024-06-12T10:00:00Z",
+          "status": "approved"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body.complete": {
+            "match": "type"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.petId": {
+            "match": "type"
+          },
+          "$.body.quantity": {
+            "match": "type"
+          },
+          "$.body.shipDate": {
+            "match": "regex",
+            "regex": "^\\d{4}-\\d{2}-\\d{2}T.*Z$"
+          },
+          "$.body.status": {
+            "match": "regex",
+            "regex": "placed|approved|delivered"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to delete an order",
+      "providerState": "order with id 301 exists",
+      "request": {
+        "method": "DELETE",
+        "path": "/v2/store/order/301"
+      },
+      "response": {
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to fetch inventory",
+      "providerState": "store inventory seeded",
+      "request": {
+        "method": "GET",
+        "path": "/v2/store/inventory"
+      },
+      "response": {
+        "body": {
+          "approved": 2,
+          "delivered": 2,
+          "placed": 3
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body.approved": {
+            "match": "type"
+          },
+          "$.body.delivered": {
+            "match": "type"
+          },
+          "$.body.placed": {
+            "match": "type"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to create a user",
+      "providerState": "users baseline",
+      "request": {
+        "body": {
+          "email": "pact.user@example.com",
+          "firstName": "Pact",
+          "id": 501,
+          "lastName": "User",
+          "password": "pact-pass",
+          "phone": "+1234567890",
+          "userStatus": 1,
+          "username": "pact-user"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body.email": {
+            "match": "type"
+          },
+          "$.body.firstName": {
+            "match": "type"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.lastName": {
+            "match": "type"
+          },
+          "$.body.password": {
+            "match": "type"
+          },
+          "$.body.phone": {
+            "match": "type"
+          },
+          "$.body.userStatus": {
+            "match": "type"
+          },
+          "$.body.username": {
+            "match": "type"
+          }
+        },
+        "method": "POST",
+        "path": "/v2/user"
+      },
+      "response": {
+        "body": {
+          "email": "pact.user@example.com",
+          "firstName": "Pact",
+          "id": 501,
+          "lastName": "User",
+          "password": "pact-pass",
+          "phone": "+1234567890",
+          "userStatus": 1,
+          "username": "pact-user"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body.email": {
+            "match": "type"
+          },
+          "$.body.firstName": {
+            "match": "type"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.lastName": {
+            "match": "type"
+          },
+          "$.body.password": {
+            "match": "type"
+          },
+          "$.body.phone": {
+            "match": "type"
+          },
+          "$.body.userStatus": {
+            "match": "type"
+          },
+          "$.body.username": {
+            "match": "type"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to create users with array",
+      "providerState": "users baseline",
+      "request": {
+        "body": [
+          {
+            "email": "pact.user@example.com",
+            "firstName": "Pact",
+            "id": 501,
+            "lastName": "User",
+            "password": "pact-pass",
+            "phone": "+1234567890",
+            "userStatus": 1,
+            "username": "pact-user"
+          },
+          {
+            "email": "pact.user@example.com",
+            "firstName": "Pact",
+            "id": 501,
+            "lastName": "User",
+            "password": "pact-pass",
+            "phone": "+1234567890",
+            "userStatus": 1,
+            "username": "pact-user"
+          }
+        ],
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body": {
+            "match": "type",
+            "min": 2
+          },
+          "$.body[*].email": {
+            "match": "type"
+          },
+          "$.body[*].firstName": {
+            "match": "type"
+          },
+          "$.body[*].id": {
+            "match": "type"
+          },
+          "$.body[*].lastName": {
+            "match": "type"
+          },
+          "$.body[*].password": {
+            "match": "type"
+          },
+          "$.body[*].phone": {
+            "match": "type"
+          },
+          "$.body[*].userStatus": {
+            "match": "type"
+          },
+          "$.body[*].username": {
+            "match": "type"
+          }
+        },
+        "method": "POST",
+        "path": "/v2/user/createWithArray"
+      },
+      "response": {
+        "body": [
+          {
+            "email": "pact.user@example.com",
+            "firstName": "Pact",
+            "id": 501,
+            "lastName": "User",
+            "password": "pact-pass",
+            "phone": "+1234567890",
+            "userStatus": 1,
+            "username": "pact-user"
+          },
+          {
+            "email": "pact.user@example.com",
+            "firstName": "Pact",
+            "id": 501,
+            "lastName": "User",
+            "password": "pact-pass",
+            "phone": "+1234567890",
+            "userStatus": 1,
+            "username": "pact-user"
+          }
+        ],
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body": {
+            "match": "type",
+            "min": 2
+          },
+          "$.body[*].email": {
+            "match": "type"
+          },
+          "$.body[*].firstName": {
+            "match": "type"
+          },
+          "$.body[*].id": {
+            "match": "type"
+          },
+          "$.body[*].lastName": {
+            "match": "type"
+          },
+          "$.body[*].password": {
+            "match": "type"
+          },
+          "$.body[*].phone": {
+            "match": "type"
+          },
+          "$.body[*].userStatus": {
+            "match": "type"
+          },
+          "$.body[*].username": {
+            "match": "type"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to create users with list",
+      "providerState": "users baseline",
+      "request": {
+        "body": [
+          {
+            "email": "pact.user@example.com",
+            "firstName": "Pact",
+            "id": 501,
+            "lastName": "User",
+            "password": "pact-pass",
+            "phone": "+1234567890",
+            "userStatus": 1,
+            "username": "pact-user"
+          },
+          {
+            "email": "pact.user@example.com",
+            "firstName": "Pact",
+            "id": 501,
+            "lastName": "User",
+            "password": "pact-pass",
+            "phone": "+1234567890",
+            "userStatus": 1,
+            "username": "pact-user"
+          }
+        ],
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body": {
+            "match": "type",
+            "min": 2
+          },
+          "$.body[*].email": {
+            "match": "type"
+          },
+          "$.body[*].firstName": {
+            "match": "type"
+          },
+          "$.body[*].id": {
+            "match": "type"
+          },
+          "$.body[*].lastName": {
+            "match": "type"
+          },
+          "$.body[*].password": {
+            "match": "type"
+          },
+          "$.body[*].phone": {
+            "match": "type"
+          },
+          "$.body[*].userStatus": {
+            "match": "type"
+          },
+          "$.body[*].username": {
+            "match": "type"
+          }
+        },
+        "method": "POST",
+        "path": "/v2/user/createWithList"
+      },
+      "response": {
+        "body": [
+          {
+            "email": "pact.user@example.com",
+            "firstName": "Pact",
+            "id": 501,
+            "lastName": "User",
+            "password": "pact-pass",
+            "phone": "+1234567890",
+            "userStatus": 1,
+            "username": "pact-user"
+          },
+          {
+            "email": "pact.user@example.com",
+            "firstName": "Pact",
+            "id": 501,
+            "lastName": "User",
+            "password": "pact-pass",
+            "phone": "+1234567890",
+            "userStatus": 1,
+            "username": "pact-user"
+          }
+        ],
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body": {
+            "match": "type",
+            "min": 2
+          },
+          "$.body[*].email": {
+            "match": "type"
+          },
+          "$.body[*].firstName": {
+            "match": "type"
+          },
+          "$.body[*].id": {
+            "match": "type"
+          },
+          "$.body[*].lastName": {
+            "match": "type"
+          },
+          "$.body[*].password": {
+            "match": "type"
+          },
+          "$.body[*].phone": {
+            "match": "type"
+          },
+          "$.body[*].userStatus": {
+            "match": "type"
+          },
+          "$.body[*].username": {
+            "match": "type"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to fetch a user",
+      "providerState": "user pact-user exists",
+      "request": {
+        "method": "GET",
+        "path": "/v2/user/pact-user"
+      },
+      "response": {
+        "body": {
+          "email": "pact.user@example.com",
+          "firstName": "Pact",
+          "id": 501,
+          "lastName": "User",
+          "password": "pact-pass",
+          "phone": "+1234567890",
+          "userStatus": 1,
+          "username": "pact-user"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body.email": {
+            "match": "type"
+          },
+          "$.body.firstName": {
+            "match": "type"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.lastName": {
+            "match": "type"
+          },
+          "$.body.password": {
+            "match": "type"
+          },
+          "$.body.phone": {
+            "match": "type"
+          },
+          "$.body.userStatus": {
+            "match": "type"
+          },
+          "$.body.username": {
+            "match": "type"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to update a user",
+      "providerState": "user pact-user exists",
+      "request": {
+        "body": {
+          "email": "pact.user+updated@example.com",
+          "firstName": "Pact Updated",
+          "id": 501,
+          "lastName": "User",
+          "password": "pact-pass",
+          "phone": "+1234509876",
+          "userStatus": 3,
+          "username": "pact-user"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "$.body.email": {
+            "match": "type"
+          },
+          "$.body.firstName": {
+            "match": "type"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.lastName": {
+            "match": "type"
+          },
+          "$.body.password": {
+            "match": "type"
+          },
+          "$.body.phone": {
+            "match": "type"
+          },
+          "$.body.userStatus": {
+            "match": "type"
+          },
+          "$.body.username": {
+            "match": "type"
+          }
+        },
+        "method": "PUT",
+        "path": "/v2/user/pact-user"
+      },
+      "response": {
+        "body": {
+          "email": "pact.user+updated@example.com",
+          "firstName": "Pact Updated",
+          "id": 501,
+          "lastName": "User",
+          "password": "pact-pass",
+          "phone": "+1234509876",
+          "userStatus": 3,
+          "username": "pact-user"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body.email": {
+            "match": "type"
+          },
+          "$.body.firstName": {
+            "match": "type"
+          },
+          "$.body.id": {
+            "match": "type"
+          },
+          "$.body.lastName": {
+            "match": "type"
+          },
+          "$.body.password": {
+            "match": "type"
+          },
+          "$.body.phone": {
+            "match": "type"
+          },
+          "$.body.userStatus": {
+            "match": "type"
+          },
+          "$.body.username": {
+            "match": "type"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to delete a user",
+      "providerState": "user pact-user exists",
+      "request": {
+        "method": "DELETE",
+        "path": "/v2/user/pact-user"
+      },
+      "response": {
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to login a user",
+      "providerState": "user pact-user exists",
+      "request": {
+        "method": "GET",
+        "path": "/v2/user/login",
+        "query": "password=pact-pass&username=pact-user"
+      },
+      "response": {
+        "body": "logged in user session:pact-user",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body": {
+            "match": "type"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to logout a user",
+      "providerState": "users baseline",
+      "request": {
+        "method": "GET",
+        "path": "/v2/user/logout"
+      },
+      "response": {
+        "body": "ok",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "$.body": {
+            "match": "type"
+          },
+          "$.headers['Content-Type']": {
+            "match": "regex",
+            "regex": "application\\/json(?:;\\s?charset=utf-8)?"
+          }
+        },
+        "status": 200
+      }
     }
   ],
   "metadata": {

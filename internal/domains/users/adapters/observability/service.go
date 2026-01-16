@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"io"
 	"log/slog"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -43,7 +44,7 @@ func New(inner userports.Service, opts ...Option) userports.Service {
 	s := &Service{
 		inner:   inner,
 		tracer:  nooptrace.NewTracerProvider().Tracer(tracerName),
-		logger:  slog.New(slog.NewTextHandler(nil, nil)),
+		logger:  defaultLogger(),
 		metrics: newServiceMetrics(nil),
 	}
 	for _, opt := range opts {
@@ -53,6 +54,9 @@ func New(inner userports.Service, opts ...Option) userports.Service {
 	}
 	if s.tracer == nil {
 		s.tracer = nooptrace.NewTracerProvider().Tracer(tracerName)
+	}
+	if s.logger == nil {
+		s.logger = defaultLogger()
 	}
 	return s
 }
@@ -185,6 +189,10 @@ func (m serviceMetrics) recordDeleted(ctx context.Context) {
 	if m.usersDeleted != nil {
 		m.usersDeleted.Add(ctx, 1)
 	}
+}
+
+func defaultLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 func (m serviceMetrics) recordLogin(ctx context.Context) {

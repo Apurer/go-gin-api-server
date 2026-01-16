@@ -82,7 +82,7 @@ pact-publish:
 	-v "$$PWD/pacts:/pacts" \
 	pactfoundation/pact-cli:latest \
 	pact-broker publish /pacts \
-	--consumer-app-version 1.0.0 \
+	--consumer-app-version 2.0.0 \
 	--tag local \
 	--broker-base-url http://host.docker.internal:9292
 
