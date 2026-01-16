@@ -4,13 +4,13 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 
 ## Layout
 - `api/openapi.yaml`: Contract used to generate the Gin router/DTOs. Served at `/openapi.yaml`, `/openapi.json`, and `/swagger`.
-- `cmd/api`: HTTP API composition root (observability, repositories, services, workflow orchestrator, router). Runs migrations when Postgres is configured.
-- `cmd/worker`: Temporal worker composition root for pet creation workflows.
-- `cmd/session-purger`: One-off session purge CLI (Postgres only).
-- `go/`: Generated Gin transport that mounts routes and delegates to application services (`go/api_*.go`, `go/routers.go`).
+- `bin/`: Local build artifacts (ignored in VCS).
+- `cmd/`: Entrypoints for API, Temporal worker, and session purger.
+- `docs/`: Architecture notes and diagrams.
+- `generated/go/`: Generated Gin transport that mounts routes and delegates to application services (`go/api_*.go`, `go/routers.go`).
 - `internal/`: Domain/application code, adapters, and platform helpers.
-  - `domains`: Bounded contexts (domain, application, ports, adapters).
-    - `pets`, `store`, `users`
+  - `app`: Process wiring (config, run logic).
+  - `domains`: Bounded contexts (domain, application, ports, adapters) for `pets`, `store`, and `users`.
   - `clients/http/partner`: Minimal client used by the partner mapper.
   - `platform/temporal`: Workflows, activities, and sequences for pet creation.
   - `platform`: Observability and Postgres helpers.

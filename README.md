@@ -5,24 +5,27 @@ This repo keeps the OpenAPI-generated Gin transport intact while moving the busi
 ## Layout
 ```
 go-gin-api-server/
-- api/                       # OpenAPI contract served at /openapi.(json|yaml) and /swagger
-- cmd/
-  - api/main.go              # HTTP API composition root (observability, repos, services, router)
-  - worker/main.go           # Temporal worker wiring for pet creation
-- go/                        # Generated Gin router + DTOs delegating to application services
-- internal/
-  - domains/                 # Domain slices (bounded contexts)
-    - pets/                  # Pets bounded context (domain, application, ports, adapters)
-    - store/                 # Store/orders bounded context
-    - users/                 # User management bounded context
-  - clients/http/partner/    # Partner sync HTTP client used by the mapper/sync adapter
-  - platform/temporal/       # Workflows, activities, sequences for pet creation
-  - platform/                # Shared platform concerns (OTEL, Postgres helpers, migrations)
-  - shared/                  # Cross-cutting projection helpers
-- Dockerfile
-- description.md
-- project.md
-- README.md
+├── api/                      # OpenAPI contract served at /openapi.(json|yaml) and /swagger
+├── bin/                      # Local build artifacts (ignored in VCS)
+├── cmd/                      # Entry points
+│   ├── api/                  # HTTP API composition root (observability, repos, services, router)
+│   ├── worker/               # Temporal worker wiring for pet creation
+│   └── session-purger/       # CLI to purge expired sessions
+├── docs/                     # Architecture notes and diagrams
+├── generated/go/             # Generated Gin router + DTOs delegating to application services
+├── internal/                 # Domain/application code, adapters, and platform helpers
+│   ├── app/                  # Process wiring (config, run logic)
+│   ├── clients/http/partner/ # Partner sync HTTP client used by the mapper/sync adapter
+│   ├── domains/              # Bounded contexts (pets, store, users)
+│   ├── platform/             # OTEL, Postgres helpers, migrations, Temporal workflows
+│   └── shared/               # Cross-cutting projection helpers
+├── Dockerfile
+├── Makefile
+├── go.mod
+├── go.sum
+├── description.md
+├── project.md
+└── README.md
 ```
 
 **Domain slices** (bounded contexts): `internal/domains/pets`, `internal/domains/store`, `internal/domains/users`. Everything else under `internal/` supports those domains (platform, integrations, workflows).
