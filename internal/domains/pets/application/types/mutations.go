@@ -34,6 +34,7 @@ type PetMutationInput struct {
 // AddPetInput captures the request to add a new pet into the catalog.
 type AddPetInput struct {
 	PetMutationInput
+	IdempotencyKey string
 }
 
 // UpdatePetInput replaces an existing pet with new state.

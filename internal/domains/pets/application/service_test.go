@@ -116,14 +116,76 @@ func TestAddPet_PartnerSyncError(t *testing.T) {
 	require.Equal(t, int64(4), syncer.lastID)
 }
 
+func TestAddPet_IdempotencyReplaySkipsSync(t *testing.T) {
+	repo := petmemory.NewRepository()
+	store := petmemory.NewIdempotencyStore()
+	syncer := &stubPartnerSync{}
+	svc := NewService(repo, WithPartnerSync(syncer), WithIdempotencyStore(store))
+
+	name := "Rex"
+	photos := []string{"http://example.com/rex.jpg"}
+	input := pettypes.AddPetInput{
+		PetMutationInput: pettypes.PetMutationInput{
+			ID:        20,
+			Name:      &name,
+			PhotoURLs: &photos,
+		},
+		IdempotencyKey: "replay-key",
+	}
+	first, err := svc.AddPet(context.Background(), input)
+	require.NoError(t, err)
+	require.NotNil(t, first)
+	require.Equal(t, 1, syncer.callCount)
+
+	syncer.called = false
+	second, err := svc.AddPet(context.Background(), input)
+	require.NoError(t, err)
+	require.NotNil(t, second)
+	require.Equal(t, first.Pet.ID, second.Pet.ID)
+	require.False(t, syncer.called, "replayed request should skip partner sync")
+	require.Equal(t, 1, syncer.callCount)
+}
+
+func TestAddPet_IdempotencyConflict(t *testing.T) {
+	repo := petmemory.NewRepository()
+	store := petmemory.NewIdempotencyStore()
+	svc := NewService(repo, WithIdempotencyStore(store))
+
+	name := "Rex"
+	photos := []string{"http://example.com/rex.jpg"}
+	key := "conflict-key"
+	_, err := svc.AddPet(context.Background(), pettypes.AddPetInput{
+		PetMutationInput: pettypes.PetMutationInput{
+			ID:        21,
+			Name:      &name,
+			PhotoURLs: &photos,
+		},
+		IdempotencyKey: key,
+	})
+	require.NoError(t, err)
+
+	otherName := "Buddy"
+	_, err = svc.AddPet(context.Background(), pettypes.AddPetInput{
+		PetMutationInput: pettypes.PetMutationInput{
+			ID:        22,
+			Name:      &otherName,
+			PhotoURLs: &photos,
+		},
+		IdempotencyKey: key,
+	})
+	require.ErrorIs(t, err, ErrIdempotencyConflict)
+}
+
 type stubPartnerSync struct {
-	called bool
-	lastID int64
-	err    error
+	called    bool
+	callCount int
+	lastID    int64
+	err       error
 }
 
 func (s *stubPartnerSync) Sync(_ context.Context, pet *domain.Pet) error {
 	s.called = true
+	s.callCount++
 	if pet != nil {
 		s.lastID = pet.ID
 	}

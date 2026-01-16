@@ -12,6 +12,8 @@ var (
 	ErrInvalidInput = errors.New("invalid pet input")
 	// ErrPartnerSync wraps failures pushing changes to an external partner.
 	ErrPartnerSync = errors.New("partner sync failed")
+	// ErrIdempotencyConflict indicates the same Idempotency-Key was reused with a different request.
+	ErrIdempotencyConflict = errors.New("idempotency key conflict")
 )
 
 func mapError(err error) error {

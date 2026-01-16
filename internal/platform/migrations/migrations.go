@@ -14,6 +14,7 @@ func Run(db *gorm.DB) error {
 	}
 	return db.AutoMigrate(
 		&petRecord{},
+		&petIdempotencyRecord{},
 		&orderRecord{},
 		&userRecord{},
 		&sessionRecord{},
@@ -39,6 +40,16 @@ type petRecord struct {
 }
 
 func (petRecord) TableName() string { return "pets" }
+
+type petIdempotencyRecord struct {
+	Key         string    `gorm:"primaryKey;column:key;size:255"`
+	RequestHash string    `gorm:"column:request_hash;size:128"`
+	PetID       int64     `gorm:"column:pet_id"`
+	CreatedAt   time.Time `gorm:"column:created_at"`
+	UpdatedAt   time.Time `gorm:"column:updated_at"`
+}
+
+func (petIdempotencyRecord) TableName() string { return "pet_idempotency_keys" }
 
 // Order schema mirrors the store Postgres adapter.
 type orderRecord struct {

@@ -37,7 +37,8 @@ go-gin-api-server/
 - `domain`: Pet aggregate with category, tags, external reference, hair length, and status invariants.
 - `application`: Use cases with tracing/metrics/logging; command/query inputs live under `application/types/` (mutations, queries, imports, grooming, media).
 - `ports`: Repository and workflow orchestrator interfaces plus shared errors.
-- `adapters`: HTTP mapper (`adapters/http/mapper`), in-memory repository (`adapters/memory`), Postgres repository with array/JSON mapping (`adapters/persistence/postgres`; schema managed via `internal/platform/migrations`), workflow orchestrators (inline vs Temporal) under `adapters/workflows`, and an external partner adapter that maps payloads and syncs via `internal/clients/http/partner` when enabled.
+- `adapters`: HTTP mapper (`adapters/http/mapper`), in-memory repository (`adapters/memory`), Postgres repository with array/JSON mapping (`adapters/persistence/postgres`; schema managed via `internal/platform/migrations`), workflow orchestrators (inline vs Temporal) under `adapters/workflows`, an idempotency store (`pet_idempotency_keys` table in Postgres or in-memory), and an external partner adapter that maps payloads and syncs via `internal/clients/http/partner` when enabled.
+- Idempotency: `POST /v2/pet` accepts `Idempotency-Key`; identical payloads replay the stored projection, mismatches return HTTP 409. Temporal workflow IDs are derived from the key to dedupe runs.
 
 ### Store (`internal/domains/store`)
 - Order aggregate and statuses, application service with inventory calculation, repository interface, in-memory repository, Postgres repository (schema via `internal/platform/migrations`), and HTTP mappers.

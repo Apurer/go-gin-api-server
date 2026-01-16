@@ -18,13 +18,14 @@ import (
 
 // PetAPI wires HTTP transport with the pets bounded context service and workflows.
 type PetAPI struct {
-	service   petsports.Service
-	workflows petsports.WorkflowOrchestrator
+	service          petsports.Service
+	workflows        petsports.WorkflowOrchestrator
+	idempotencyStore petsports.IdempotencyStore
 }
 
 // NewPetAPI creates a PetAPI backed by the provided service.
-func NewPetAPI(service petsports.Service, workflows petsports.WorkflowOrchestrator) PetAPI {
-	return PetAPI{service: service, workflows: workflows}
+func NewPetAPI(service petsports.Service, workflows petsports.WorkflowOrchestrator, store petsports.IdempotencyStore) PetAPI {
+	return PetAPI{service: service, workflows: workflows, idempotencyStore: store}
 }
 
 // Post /v2/pet
@@ -36,7 +37,26 @@ func (api *PetAPI) AddPet(c *gin.Context) {
 		return
 	}
 	mutation := toMutationFromCreate(payload)
-	input := petstypes.AddPetInput{PetMutationInput: pethttpmapper.ToMutationInput(mutation)}
+	input := petstypes.AddPetInput{
+		PetMutationInput: pethttpmapper.ToMutationInput(mutation),
+		IdempotencyKey:   strings.TrimSpace(c.GetHeader("Idempotency-Key")),
+	}
+	var fingerprint string
+	if input.IdempotencyKey != "" && api.idempotencyStore != nil {
+		var err error
+		fingerprint, err = petsapp.FingerprintAddPet(input)
+		if err != nil {
+			respondProblem(c, apierrors.ErrInternal.WithDetail(err.Error()))
+			return
+		}
+		if projection, err := api.tryReplayIdempotent(c.Request.Context(), input.IdempotencyKey, fingerprint); err != nil {
+			respondPetServiceError(c, err)
+			return
+		} else if projection != nil {
+			c.JSON(http.StatusOK, pethttpmapper.FromProjection(projection))
+			return
+		}
+	}
 	saved, err := api.createPet(c.Request.Context(), input)
 	if err != nil {
 		respondPetServiceError(c, err)
@@ -220,7 +240,28 @@ func respondPetServiceError(c *gin.Context, err error) {
 		respondProblem(c, apierrors.ErrValidation.WithDetail(err.Error()))
 		return
 	}
+	if errors.Is(err, petsapp.ErrIdempotencyConflict) {
+		respondProblem(c, apierrors.ErrConflict.WithDetail(err.Error()))
+		return
+	}
 	respondProblem(c, apierrors.ErrInternal.WithDetail(err.Error()))
+}
+
+func (api *PetAPI) tryReplayIdempotent(ctx context.Context, key, fingerprint string) (*petstypes.PetProjection, error) {
+	if key == "" || api.idempotencyStore == nil {
+		return nil, nil
+	}
+	record, err := api.idempotencyStore.Get(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	if record == nil {
+		return nil, nil
+	}
+	if record.RequestHash != fingerprint {
+		return nil, petsapp.ErrIdempotencyConflict
+	}
+	return api.service.GetByID(ctx, petstypes.PetIdentifier{ID: record.PetID})
 }
 
 func toMutationFromCreate(model PetCreate) pethttpmapper.MutationPet {

@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	types "github.com/Apurer/go-gin-api-server/internal/domains/pets/application/types"
 	"github.com/Apurer/go-gin-api-server/internal/domains/pets/domain"
@@ -11,8 +13,9 @@ import (
 
 // Service orchestrates the pets bounded context use cases.
 type Service struct {
-	repo        ports.Repository
-	partnerSync ports.PartnerSync
+	repo             ports.Repository
+	partnerSync      ports.PartnerSync
+	idempotencyStore ports.IdempotencyStore
 }
 
 // Option customizes the service wiring.
@@ -22,6 +25,13 @@ type Option func(*Service)
 func WithPartnerSync(sync ports.PartnerSync) Option {
 	return func(s *Service) {
 		s.partnerSync = sync
+	}
+}
+
+// WithIdempotencyStore attaches storage for idempotency keys.
+func WithIdempotencyStore(store ports.IdempotencyStore) Option {
+	return func(s *Service) {
+		s.idempotencyStore = store
 	}
 }
 
@@ -38,11 +48,39 @@ func NewService(repo ports.Repository, opts ...Option) *Service {
 
 // AddPet persists a new pet aggregate.
 func (s *Service) AddPet(ctx context.Context, input types.AddPetInput) (*types.PetProjection, error) {
+	idempotencyKey := strings.TrimSpace(input.IdempotencyKey)
+	var fingerprint string
+	var err error
+	if idempotencyKey != "" && s.idempotencyStore != nil {
+		fingerprint, err = FingerprintAddPet(input)
+		if err != nil {
+			return nil, mapError(err)
+		}
+		if existing, err := s.replayIdempotentPet(ctx, idempotencyKey, fingerprint); err != nil || existing != nil {
+			return existing, mapError(err)
+		}
+	}
 	pet, err := buildPetFromMutation(input.PetMutationInput)
 	if err != nil {
 		return nil, mapError(err)
 	}
-	return s.saveAndSync(ctx, pet)
+	saved, err := s.saveAndSync(ctx, pet)
+	if idempotencyKey != "" && s.idempotencyStore != nil && saved != nil && saved.Pet != nil {
+		if _, err := s.idempotencyStore.Save(ctx, ports.IdempotencyRecord{
+			Key:         idempotencyKey,
+			RequestHash: fingerprint,
+			PetID:       saved.Pet.ID,
+		}); err != nil {
+			if errors.Is(err, ports.ErrIdempotencyConflict) {
+				return saved, mapError(fmt.Errorf("%w: %w", ErrIdempotencyConflict, err))
+			}
+			return saved, mapError(err)
+		}
+	}
+	if err != nil {
+		return saved, mapError(err)
+	}
+	return saved, nil
 }
 
 // UpdatePet overrides an existing pet with new state.
@@ -172,6 +210,23 @@ func (s *Service) syncWithPartner(ctx context.Context, saved *types.PetProjectio
 		return fmt.Errorf("%w: %w", ErrPartnerSync, err)
 	}
 	return nil
+}
+
+func (s *Service) replayIdempotentPet(ctx context.Context, key, fingerprint string) (*types.PetProjection, error) {
+	if s.idempotencyStore == nil {
+		return nil, nil
+	}
+	record, err := s.idempotencyStore.Get(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	if record == nil {
+		return nil, nil
+	}
+	if record.RequestHash != fingerprint {
+		return nil, fmt.Errorf("%w: request payload does not match stored idempotency key", ErrIdempotencyConflict)
+	}
+	return s.repo.GetByID(ctx, record.PetID)
 }
 
 func buildPetFromMutation(input types.PetMutationInput) (*domain.Pet, error) {

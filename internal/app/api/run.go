@@ -73,8 +73,13 @@ func Run(ctx context.Context) error {
 	}
 
 	petRepo := buildPetRepository(db)
+	petIdempotencyStore := buildPetIdempotencyStore(db)
 	partnerSync := buildPartnerSync(cfg.PartnerAPIBaseURL, logger)
-	corePetService := petsapp.NewService(petRepo, petsapp.WithPartnerSync(partnerSync))
+	corePetService := petsapp.NewService(
+		petRepo,
+		petsapp.WithPartnerSync(partnerSync),
+		petsapp.WithIdempotencyStore(petIdempotencyStore),
+	)
 	petService := petsobs.New(
 		corePetService,
 		petsobs.WithLogger(logger),
@@ -116,7 +121,7 @@ func Run(ctx context.Context) error {
 	}
 
 	handlers := petstoreserver.ApiHandleFunctions{
-		PetAPI:   petstoreserver.NewPetAPI(petService, petWorkflows),
+		PetAPI:   petstoreserver.NewPetAPI(petService, petWorkflows, petIdempotencyStore),
 		StoreAPI: petstoreserver.NewStoreAPI(storeService),
 		UserAPI:  petstoreserver.NewUserAPI(userService),
 	}
@@ -138,6 +143,13 @@ func buildPetRepository(db *gorm.DB) petsports.Repository {
 		return petsmemory.NewRepository()
 	}
 	return petspostgres.NewRepository(db)
+}
+
+func buildPetIdempotencyStore(db *gorm.DB) petsports.IdempotencyStore {
+	if db == nil {
+		return petsmemory.NewIdempotencyStore()
+	}
+	return petspostgres.NewIdempotencyStore(db)
 }
 
 func buildPartnerSync(baseURL string, logger *slog.Logger) petsports.PartnerSync {

@@ -72,6 +72,11 @@ This repository reshapes the OpenAPI-generated Gin server into a Clean Architect
 - `internal/platform/postgres`: `Connect` helper that opens a GORM connection and pings with timeout.
 - `internal/shared/projection`: Generic projection wrapper carrying created/updated timestamps.
 
+### Idempotent pet creation
+- `POST /v2/pet` accepts `Idempotency-Key`; repeated calls with the same payload replay the stored projection (backed by Postgres table `pet_idempotency_keys` or in-memory fallback).
+- Mismatched payloads with the same key return HTTP 409.
+- Temporal workflows reuse a deterministic workflow ID derived from the key to avoid duplicate runs.
+
 ## Environment reference
 - `PORT`: HTTP bind port (default `8080`).
 - `POSTGRES_DSN`: Enables Postgres-backed repositories/session store; missing/invalid DSN falls back to memory with warnings.

@@ -48,10 +48,11 @@ func main() {
 	db, cleanupRepo := platformpostgres.ConnectFromEnv(ctx, logger)
 	defer cleanupRepo()
 	petRepo := buildPetRepository(db, logger)
+	petIdempotencyStore := buildPetIdempotencyStore(db, logger)
 	partnerSync := buildPartnerSyncFromEnv(logger)
 	// Persistence-only service (no partner sync) to avoid duplicate outbound calls inside activities.
 	persistPetService := petsobs.New(
-		petsapp.NewService(petRepo),
+		petsapp.NewService(petRepo, petsapp.WithIdempotencyStore(petIdempotencyStore)),
 		petsobs.WithLogger(logger),
 		petsobs.WithTracer(instruments.Tracer("internal.pets.application")),
 		petsobs.WithMeter(instruments.Meter("internal.pets.application")),
@@ -97,6 +98,15 @@ func buildPetRepository(db *gorm.DB, logger *slog.Logger) petsports.Repository {
 	}
 	logger.Info("worker pet repository configured with postgres")
 	return petspostgres.NewRepository(db)
+}
+
+func buildPetIdempotencyStore(db *gorm.DB, logger *slog.Logger) petsports.IdempotencyStore {
+	if db == nil {
+		logger.Warn("POSTGRES_DSN not set or unavailable, falling back to in-memory idempotency store")
+		return petsmemory.NewIdempotencyStore()
+	}
+	logger.Info("worker pet idempotency store configured with postgres")
+	return petspostgres.NewIdempotencyStore(db)
 }
 
 func buildPartnerSyncFromEnv(logger *slog.Logger) petsports.PartnerSync {

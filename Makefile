@@ -8,6 +8,11 @@ BUILD_DIR=bin
 GO=go
 GOFLAGS=-v
 
+# Git repo info used by OpenAPI generator (can be overridden when calling make)
+# Defaults keep the placeholder values already used in the project.
+GIT_USER_ID ?= GIT_USER_ID
+GIT_REPO_ID ?= GIT_REPO_ID
+
 # Default target
 all: lint test build
 
@@ -107,7 +112,7 @@ docker-run:
 ## openapi-gen: Generate OpenAPI server code (requires Docker)
 openapi-gen:
 	@which docker > /dev/null || (echo "Docker not found: please install Docker"; exit 1)
-	docker run --rm -v "$(shell pwd)":/local openapitools/openapi-generator-cli generate -i /local/api/openapi.yaml -g go-gin-server -o /local/generated
+	docker run --rm -v "$(shell pwd)":/local openapitools/openapi-generator-cli generate -i /local/api/openapi.yaml -g go-gin-server -o /local/generated --git-user-id $(GIT_USER_ID) --git-repo-id $(GIT_REPO_ID)
 
 ## generate: Run code generation (OpenAPI + go generate)
 generate: openapi-gen
