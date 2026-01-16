@@ -26,7 +26,7 @@ paths:
       description: ""
       operationId: addPet
       requestBody:
-        $ref: "#/components/requestBodies/Pet"
+        $ref: "#/components/requestBodies/PetCreate"
       responses:
         "200":
           content:
@@ -53,7 +53,7 @@ paths:
         url: http://petstore.swagger.io/v2/doc/updatePet
       operationId: updatePet
       requestBody:
-        $ref: "#/components/requestBodies/Pet"
+        $ref: "#/components/requestBodies/PetUpdate"
       responses:
         "200":
           content:
@@ -629,15 +629,25 @@ components:
             type: array
       description: List of user object
       required: true
-    Pet:
+    PetCreate:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Pet"
+            $ref: "#/components/schemas/PetCreate"
         application/xml:
           schema:
-            $ref: "#/components/schemas/Pet"
+            $ref: "#/components/schemas/PetCreate"
       description: Pet object that needs to be added to the store
+      required: true
+    PetUpdate:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/PetUpdate"
+        application/xml:
+          schema:
+            $ref: "#/components/schemas/PetUpdate"
+      description: Pet object that updates an existing pet
       required: true
   schemas:
     Order:
@@ -811,6 +821,97 @@ components:
       type: object
       xml:
         name: Pet
+    PetCreate:
+      description: Payload used to create a new pet
+      properties:
+        id:
+          format: int64
+          type: integer
+        category:
+          $ref: "#/components/schemas/Category"
+        name:
+          example: doggie
+          type: string
+        photoUrls:
+          items:
+            type: string
+          type: array
+          xml:
+            name: photoUrl
+            wrapped: true
+        tags:
+          items:
+            $ref: "#/components/schemas/Tag"
+          type: array
+          xml:
+            name: tag
+            wrapped: true
+        hairLengthCm:
+          description: Most recent measured hair length in centimeters
+          format: double
+          type: number
+        externalReference:
+          $ref: "#/components/schemas/ExternalPetReference"
+        status:
+          deprecated: true
+          description: pet status in the store
+          enum:
+          - available
+          - pending
+          - sold
+          type: string
+      required:
+      - name
+      - photoUrls
+      type: object
+    PetUpdate:
+      description: Payload used to update an existing pet; fields are optional and nullable to preserve field presence
+      properties:
+        id:
+          format: int64
+          type: integer
+        category:
+          $ref: "#/components/schemas/Category"
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        photoUrls:
+          items:
+            type: string
+          type: array
+          nullable: true
+          xml:
+            name: photoUrl
+            wrapped: true
+        tags:
+          items:
+            $ref: "#/components/schemas/Tag"
+          type: array
+          nullable: true
+          xml:
+            name: tag
+            wrapped: true
+        hairLengthCm:
+          description: Most recent measured hair length in centimeters
+          format: double
+          type: number
+          nullable: true
+        externalReference:
+          $ref: "#/components/schemas/ExternalPetReference"
+          nullable: true
+        status:
+          deprecated: true
+          description: pet status in the store
+          enum:
+          - available
+          - pending
+          - sold
+          type: string
+          nullable: true
+      required:
+      - id
+      type: object
     ExternalPetReference:
       description: Links the local pet to a record that lives in another provider.
       properties:
