@@ -3,6 +3,8 @@ ARG GO_VERSION=1.24
 FROM golang:${GO_VERSION}-bookworm AS base
 WORKDIR /src
 COPY go.mod go.sum ./
+# Ensure the replaced generated module is available during dependency download.
+COPY generated/go.mod generated/go.sum ./generated/
 RUN go mod download
 
 FROM base AS build

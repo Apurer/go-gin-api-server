@@ -34,7 +34,7 @@ type petRecord struct {
 	TagNames           pq.StringArray    `gorm:"column:tag_names;type:text[]"`
 	ExternalProvider   string            `gorm:"column:external_provider"`
 	ExternalID         string            `gorm:"column:external_id"`
-	ExternalAttributes map[string]string `gorm:"column:external_attributes;serializer:json"`
+	ExternalAttributes map[string]string `gorm:"column:external_attributes;type:jsonb;serializer:json"`
 	CreatedAt          time.Time         `gorm:"column:created_at"`
 	UpdatedAt          time.Time         `gorm:"column:updated_at"`
 }
